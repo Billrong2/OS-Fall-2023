@@ -20,42 +20,28 @@ int main(int argc, char *argv[])
     size_t read = 0;
     while (1)
     {
-     	printf("xxr_main$: ");
+     	printf("xxr_dash$: ");
         read = getline(&input, &length, stdin);
         if (read == -1)
         {
             printf("Error reading input.\n");
             return 1;
         }
-	// use getline() to get the input string
-        // Tokenize the input into words based on spaces
-        int i=0, j = 0;
+        int i = 0;
         char *sentence_token = strtok_r(input, sentencebreaker,&sentence);
         while (sentence_token != NULL) {
             i++;
-            printf("sentences are: %s\n", sentence_token);
             char* inner_token = strtok_r(sentence_token, wordbreaker, &words);
             if (inner_token != NULL && i==1 && (strcmp(inner_token, "BYE") ==0 || strcmp(inner_token, "BYE\n") == 0)) {
                 printf("Goodbye, exiting shell ... \n");
                 return 0;
             }
             while(inner_token!= NULL){
-                printf("words are: %s\n", inner_token);
                 inner_token = strtok_r(NULL, wordbreaker,&words);
-                j++;
         }
 	sentence_token = strtok_r(NULL, sentencebreaker,
                          &sentence);
+        }
     }
-     	// The input string consists of several sentences separated by '.'
-        // Each sentence consists of several tokens separated by ' ' (space).
-        // Using strtok_r() find the number of sentences and the number of tokens
-        // in each sentence. HINT: man strtok and look at the sample program at the end.
-        // Print the results.
-        // If the first token is BYE, break from the while loop (check strcmp/strncmp)
-        //printf("input number of words is %d\n", j);
-         printf("sentence and words count are %d %d \n", i, j);
-    }
-    //return 0;
     exit(EXIT_SUCCESS);
 }
