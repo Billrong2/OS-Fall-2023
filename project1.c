@@ -29,7 +29,12 @@ int main()
         }
         int i = 0;
         int j =0;
-        
+        for (int x = 0; input[x] != '\0'; x++) {
+        if (input[x] == '\n') {
+            // Shift characters to the left to overwrite the '\r' character
+            memmove(&input[x], &input[x + 1], strlen(input) - x);
+        }
+    }
         char *sentence_token = strtok_r(input, sentencebreaker, &sentence);
         while (sentence_token != NULL)
         {
@@ -38,7 +43,7 @@ int main()
             if (inner_token != NULL && i == 1 && (strcmp(inner_token, "BYE") == 0 || strcmp(inner_token, "BYE\n") == 0))
             {
                 printf("Goodbye, exiting shell ... \n");
-                return 0;
+                exit(EXIT_SUCCESS);
             }
             myargs[0] = inner_token;
             //printf("%s", inner_token);
@@ -54,6 +59,7 @@ int main()
         int rc = fork();
         if (rc == 0)
         { // child (new process)
+            printf("sentence count is %d, word count is %d: \n", i, j);
             execvp(myargs[0], myargs);
             printf(" Error: 2cwshould not be here \n");
         }
