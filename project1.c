@@ -84,8 +84,9 @@ int main()
                         pass;
                     }
                 }
+                int fd;
                 if(doublecheck ==1){
-                    int fd = open(*redirection, O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
+                    fd = open(*redirection, O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
                     if(fd == -1 && doublecheck ==1){
                         printf("File Open Failed . . . \n");
                         printf("returning to shell . . .\n");
@@ -96,10 +97,9 @@ int main()
                 printf(" ---------separate here---------- redir above\n");
                 printf("%d \n", doublecheck);
                 printf(" ---------separate here---------- doublecheck above\n");
+                execvp(myargs[0],myargs);
                 printf("Error: Commond Execution Failed . . . \n");
                 printf("returning to shell . . .\n");
-                execvp(myargs[0],myargs);
-
             }
             else{
                 wait(NULL);
