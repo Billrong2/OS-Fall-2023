@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+#define pass (void)0
 int main()
 {
     const char sentencebreaker[] = "&&";
@@ -16,6 +17,8 @@ int main()
     size_t read = 0;
     char *myargs[10];
     myargs[0] = input;
+    char *redirection[20];
+    redirection[0] = input;
     myargs[8] = NULL;
     while (1)
     {
@@ -60,9 +63,43 @@ int main()
             printf(" ---------separate here---------- arg above\n");
             int rc = fork();
             if (rc == 0){
-                execvp(myargs[0],myargs);
+                int logic_imp;
+                int redirect_counter = 0;
+                int doublecheck =0;
+                for(logic_imp = 0; logic_imp <j;logic_imp++)
+                {
+                    if(strcmp(myargs[logic_imp], ">")==0){
+                        for(x = logic_imp; x <= j; x ++){
+                            redirection[redirect_counter] = myargs[x+1];
+                            myargs[logic_imp] = NULL;
+                            redirect_counter++;
+                        }
+                        doublecheck ++;
+                    }
+                    if(doublecheck >1){
+                        printf("Invalid Input, returning shell . . . \n");
+                        break;
+                    }
+                    else{
+                        pass;
+                    }
+                }
+                if(doublecheck ==1){
+                    int fd = open(*redirection, O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
+                    if(fd == -1 && doublecheck ==1){
+                        printf("File Open Failed . . . \n");
+                        printf("returning to shell . . .\n");
+                    }
+                    dup2(fd, 1);
+                }
+                printf("%s \n", *redirection);
+                printf(" ---------separate here---------- redir above\n");
+                printf("%d \n", doublecheck);
+                printf(" ---------separate here---------- doublecheck above\n");
                 printf("Error: Commond Execution Failed . . . \n");
                 printf("returning to shell . . .\n");
+                execvp(myargs[0],myargs);
+
             }
             else{
                 wait(NULL);
