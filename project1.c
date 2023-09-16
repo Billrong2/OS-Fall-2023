@@ -6,6 +6,16 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 #define pass (void)0
+char* fetch_program_path(const char *arg1, const char *arg2){
+    int comb_length = snprintf(NULL, 0, "%s%s", arg1, arg2);
+    char *combined = (char *)malloc(comb_length + 1);
+    if (combined == NULL) {
+        fprintf(stderr, "Memory allocation failed.\n");
+        exit(1);
+    }
+    snprintf(combined, comb_length + 1, "%s%s", arg1, arg2);
+    return combined;
+}
 int main()
 {
     const char sentencebreaker[] = "&&";
@@ -17,11 +27,11 @@ int main()
     size_t read = 0;
     char *myargs[10];
     myargs[0] = input;
-    char *programpath = "/bin/";
+    char *programpath = "/bin";
     char *redirection[20];
     redirection[0] = input;
     myargs[10] = NULL;
-    char combined[100];
+
     while (1)
     {
         printf("xxr_dash$: ");
@@ -54,10 +64,10 @@ int main()
                 exit(EXIT_SUCCESS);
             }
             int j = 0;
-            snprintf(combined, sizeof(combined), "%s%s", programpath, inner_token);
-            myargs[0] = strdup(combined);
-            // myargs[0] = programpath;
-            // strcat(myargs[j], inner_token);
+            //snprintf(combined, sizeof(combined), "%s%s", programpath, inner_token);
+            
+            myargs[0] = strdup(fetch_program_path(programpath, inner_token));
+
             while (inner_token != NULL)
             {   
                 inner_token = strtok_r(NULL, wordbreaker, &words);
@@ -104,12 +114,17 @@ int main()
                 printf(" ---------separate here---------- doublecheck above\n");
                 execv(myargs[0],myargs);
                 if(execv(myargs[0], myargs)==-1){
-                    printf("Error: Commond Execution Failed . . . \n");
-                    printf("returning to shell . . .\n");
+                    printf("/bin directory not accessable, trying alternative path /usr/bin . . . \n");
+                    programpath = strdup("/usr/bin/");
+                    sleep(0.5);
+                    printf("Type your command again . . . \n");
+                    sleep(0.5);
+                    // char *alt_programpath = "/usr/bin/";
+                    // char *anothertoken = strdup(myargs[1]);
+                    // myargs[0] = strdup(fetch_program_path(alt_programpath, anothertoken));
+                    // execv(myargs[0],myargs);
                 }
-
             }
-            
             else{
                 wait(NULL);
             }
@@ -122,7 +137,7 @@ int main()
         //for (x = 0; x <i; i++)
 
 
-
+        //free(myargs);
 
         // int rc = fork();
         // if (rc == 0)
