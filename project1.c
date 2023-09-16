@@ -17,9 +17,11 @@ int main()
     size_t read = 0;
     char *myargs[10];
     myargs[0] = input;
+    char *programpath = "/bin/";
     char *redirection[20];
     redirection[0] = input;
-    myargs[8] = NULL;
+    myargs[10] = NULL;
+    char combined[100];
     while (1)
     {
         printf("xxr_dash$: ");
@@ -52,7 +54,10 @@ int main()
                 exit(EXIT_SUCCESS);
             }
             int j = 0;
-            myargs[j] = inner_token;
+            snprintf(combined, sizeof(combined), "%s%s", programpath, inner_token);
+            myargs[0] = strdup(combined);
+            // myargs[0] = programpath;
+            // strcat(myargs[j], inner_token);
             while (inner_token != NULL)
             {   
                 inner_token = strtok_r(NULL, wordbreaker, &words);
@@ -97,10 +102,14 @@ int main()
                 printf(" ---------separate here---------- redir above\n");
                 printf("%d \n", doublecheck);
                 printf(" ---------separate here---------- doublecheck above\n");
-                execvp(myargs[0],myargs);
-                printf("Error: Commond Execution Failed . . . \n");
-                printf("returning to shell . . .\n");
+                execv(myargs[0],myargs);
+                if(execv(myargs[0], myargs)==-1){
+                    printf("Error: Commond Execution Failed . . . \n");
+                    printf("returning to shell . . .\n");
+                }
+
             }
+            
             else{
                 wait(NULL);
             }
