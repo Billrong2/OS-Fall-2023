@@ -10,3 +10,5 @@ Finished Assignment2
 Fixed parallel commanding issue, Awaits for redirection fixs
 ### 9/14 later updates
 Redirection Implemented, Awaits for Paths' Implementation.
+### 9/15 
+Paths' Implemented, awaits for Manual Path Selection Implementation.
