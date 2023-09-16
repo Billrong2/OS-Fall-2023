@@ -12,3 +12,5 @@ Fixed parallel commanding issue, Awaits for redirection fixs
 Redirection Implemented, Awaits for Paths' Implementation.
 ### 9/15 
 Paths' Implemented, awaits for Manual Path Selection Implementation.
+### 9/16 Demo
+Alternative path included, demo finished.
