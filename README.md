@@ -16,4 +16,4 @@ Paths' Implemented, awaits for Manual Path Selection Implementation.
 Alternative path included, demo finished.
 
 ### 9/21
-bath, path, cd, bugs in path, separate main
+bath, path, cd implemented, bugs in path, separate main
