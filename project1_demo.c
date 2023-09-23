@@ -7,29 +7,28 @@
 #include <fcntl.h>
 #include <time.h>
 
-
 #define pass (void)0
 int NUM_OF_PROGRAM_PATH = 0;
 size_t length = 100;
 const char sentencebreaker[] = "&";
 const char wordbreaker[] = " ";
-char *defaultpath = ("/bin");
+char *defaultpath = ("/bin/");
 char **programpath = NULL;
 
-
-void add_path_root(const char *path){
+void add_path_root(const char *path)
+{
     char *newPath = strdup(path);
     programpath = (char **)realloc(programpath, (NUM_OF_PROGRAM_PATH + 1) * sizeof(char *));
     programpath[NUM_OF_PROGRAM_PATH] = newPath;
     NUM_OF_PROGRAM_PATH++;
 }
-void reset_path(){
+void reset_path()
+{
     NUM_OF_PROGRAM_PATH = 1;
     free(programpath);
     programpath = NULL;
     programpath = (char **)realloc(programpath, (NUM_OF_PROGRAM_PATH + 1) * sizeof(char *));
-    programpath[0] = "/bin";
-    
+    programpath[0] = "/bin/";
 }
 void readfromfile(const char *command)
 {
@@ -64,15 +63,15 @@ char *fetch_program_path(char *arg1, const char *arg2)
 int main(int argc, char *argv[])
 {
     char *input = malloc(sizeof(char) * length);
-            char *sentence = NULL;
-        char *words = NULL;
-        size_t read = 0;
-        char *myargs[10];
-        myargs[0] = input;
-        add_path_root(defaultpath);
-        char *redirection[20];
-        redirection[0] = input;
-        myargs[10] = NULL;
+    char *sentence = NULL;
+    char *words = NULL;
+    size_t read = 0;
+    char *myargs[500];
+    myargs[0] = input;
+    add_path_root(defaultpath);
+    char *redirection[20];
+    redirection[0] = input;
+    myargs[500] = NULL;
     if (argc == 1)
     {
         printf("Entering Interactive Mode:\n");
@@ -113,7 +112,7 @@ int main(int argc, char *argv[])
                     j++;
                     myargs[j] = inner_token;
                 }
-                if (myargs[0] != NULL && (strcmp(myargs[0], "BYE") == 0 || strcmp(myargs[0], "BYE\n") == 0))
+                if (myargs[0] != NULL && (strcmp(myargs[0], "exit") == 0 || strcmp(myargs[0], "exit\n") == 0))
                 {
                     printf("Goodbye, exiting shell ... \n");
                     exit(EXIT_SUCCESS);
@@ -145,18 +144,20 @@ int main(int argc, char *argv[])
                         int path_num = 1;
                         while (1)
                         {
-                            if(myargs[path_num]!=NULL){
-                            add_path_root(myargs[path_num]);
-                            if(programpath[path_num]==NULL)
+                            if (myargs[path_num] != NULL)
                             {
-                                printf("Path Add Failed \n");
+                                add_path_root(myargs[path_num]);
+                                if (programpath[path_num] == NULL)
+                                {
+                                    printf("Path Add Failed \n");
+                                    break;
+                                }
+                                printf("Path %s Added \n", programpath[path_num]);
+                                printf("%d \n", path_num);
+                                path_num++;
+                            }
+                            else
                                 break;
-                            }
-                            printf("Path %s Added \n", programpath[path_num]);
-                            printf("%d \n",path_num);
-                            path_num++;
-                            }
-                            else break;
                         }
                     }
                 }
@@ -165,11 +166,12 @@ int main(int argc, char *argv[])
                 char *temp = NULL;
                 temp = myargs[0];
                 myargs[0] = strdup(fetch_program_path(programpath[0], myargs[0]));
-                printf("%s  %s  %s  %s  %s\n", myargs[0], myargs[1], myargs[2], myargs[3], myargs[4]);
-                printf(" ---------separate here---------- arg above\n");
-    for (x = 0; i < NUM_OF_PROGRAM_PATH; i++) {
-        printf("Program %d path: %s\n", i + 1, programpath[i]);
-    }
+                // printf("%s  %s  %s  %s  %s\n", myargs[0], myargs[1], myargs[2], myargs[3], myargs[4]);
+                // printf(" ---------separate here---------- arg above\n");
+                // for (x = 0; i < NUM_OF_PROGRAM_PATH; i++)
+                // {
+                //     printf("Program %d path: %s\n", i + 1, programpath[i]);
+                // }
                 pid_t childpid = fork();
                 if (childpid == 0)
                 {
@@ -211,25 +213,26 @@ int main(int argc, char *argv[])
                     }
                     execv(myargs[0], myargs);
                     int path_counter = 1; // start from 1 because default is 0
-                    printf("original path /bin/ not aviliable \n");
+                    // printf("original path /bin/ not aviliable \n");
                     while (1)
                     {
-                        printf("Path Directory '%s' not accessable, trying alternative path %s . . . \n", programpath[path_counter - 1], programpath[path_counter]);
+                        // printf("Path Directory '%s' not accessable, trying alternative path %s . . . \n", programpath[path_counter - 1], programpath[path_counter]);
                         myargs[0] = strdup(fetch_program_path(programpath[path_counter], temp));
                         execv(myargs[0], myargs);
                         //    /bin/clear
                         path_counter++;
                         if (programpath[path_counter] == NULL)
                         {
-                            printf("All PATH Unaviliable, returning to shell \n");
+                            printf("Invalid path, returning to shell \n");
                             exit(0);
                         }
                     }
                 }
-                else{
-                int status;
-                waitpid(childpid, &status, 0);
-                                          }
+                else
+                {
+                    int status;
+                    waitpid(childpid, &status, 0);
+                }
                 memset(myargs, '\0', sizeof(myargs));
                 sentence_token = strtok_r(NULL, sentencebreaker,
                                           &sentence);
@@ -247,10 +250,11 @@ int main(int argc, char *argv[])
             perror("Error opening batch file");
             return 1;
         }
-        while (getline(&input, &length, batchFile) != -1) {
+        while (getline(&input, &length, batchFile) != -1)
+        {
             int i = 0;
             int j = 0;
-        int x;
+            int x;
             for (x = 0; input[x] != '\0'; x++)
             {
                 if (input[x] == '\n')
@@ -270,7 +274,7 @@ int main(int argc, char *argv[])
                     j++;
                     myargs[j] = inner_token;
                 }
-                if (myargs[0] != NULL && (strcmp(myargs[0], "BYE") == 0 || strcmp(myargs[0], "BYE\n") == 0))
+                if (myargs[0] != NULL && (strcmp(myargs[0], "exit") == 0 || strcmp(myargs[0], "exit\n") == 0))
                 {
                     printf("Goodbye, exiting shell ... \n");
                     exit(EXIT_SUCCESS);
@@ -302,18 +306,20 @@ int main(int argc, char *argv[])
                         int path_num = 1;
                         while (1)
                         {
-                            if(myargs[path_num]!=NULL){
-                            add_path_root(myargs[path_num]);
-                            if(programpath[path_num]==NULL)
+                            if (myargs[path_num] != NULL)
                             {
-                                printf("Path Add Failed \n");
+                                add_path_root(myargs[path_num]);
+                                if (programpath[path_num] == NULL)
+                                {
+                                    printf("Path Add Failed \n");
+                                    break;
+                                }
+                                printf("Path %s Added \n", programpath[path_num]);
+                                printf("%d \n", path_num);
+                                path_num++;
+                            }
+                            else
                                 break;
-                            }
-                            printf("Path %s Added \n", programpath[path_num]);
-                            printf("%d \n",path_num);
-                            path_num++;
-                            }
-                            else break;
                         }
                     }
                 }
@@ -322,11 +328,12 @@ int main(int argc, char *argv[])
                 char *temp = NULL;
                 temp = myargs[0];
                 myargs[0] = strdup(fetch_program_path(programpath[0], myargs[0]));
-                printf("%s  %s  %s  %s  %s\n", myargs[0], myargs[1], myargs[2], myargs[3], myargs[4]);
-                printf(" ---------separate here---------- arg above\n");
-    for (x = 0; i < NUM_OF_PROGRAM_PATH; i++) {
-        printf("Program %d path: %s\n", i + 1, programpath[i]);
-    }
+                // printf("%s  %s  %s  %s  %s\n", myargs[0], myargs[1], myargs[2], myargs[3], myargs[4]);
+                // printf(" ---------separate here---------- arg above\n");
+                // for (x = 0; i < NUM_OF_PROGRAM_PATH; i++)
+                // {
+                //     printf("Program %d path: %s\n", i + 1, programpath[i]);
+                // }
                 pid_t childpid = fork();
                 if (childpid == 0)
                 {
@@ -368,10 +375,10 @@ int main(int argc, char *argv[])
                     }
                     execv(myargs[0], myargs);
                     int path_counter = 1; // start from 1 because default is 0
-                    printf("original path /bin/ not aviliable \n");
+                    //printf("original path /bin/ not aviliable \n");
                     while (1)
                     {
-                        printf("Path Directory '%s' not accessable, trying alternative path %s . . . \n", programpath[path_counter - 1], programpath[path_counter]);
+                        //printf("Path Directory '%s' not accessable, trying alternative path %s . . . \n", programpath[path_counter - 1], programpath[path_counter]);
                         myargs[0] = strdup(fetch_program_path(programpath[path_counter], temp));
                         execv(myargs[0], myargs);
                         //    /bin/clear
@@ -383,10 +390,11 @@ int main(int argc, char *argv[])
                         }
                     }
                 }
-                else{
-                int status;
-                waitpid(childpid, &status, 0);
-                                          }
+                else
+                {
+                    int status;
+                    waitpid(childpid, &status, 0);
+                }
                 memset(myargs, '\0', sizeof(myargs));
                 sentence_token = strtok_r(NULL, sentencebreaker,
                                           &sentence);
