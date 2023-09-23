@@ -19,4 +19,4 @@ Alternative path included, demo finished.
 bath, path, cd implemented, bugs in path, separate main
 
 ### 9/22
-BYE, path, cd bugs fixed, waiting for separation, renaming + testing
+BYE, path, cd bugs fixed, renamed, awaits for testing
