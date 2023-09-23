@@ -8,6 +8,8 @@
 #include <time.h>
 #define pass (void)0
 int NUM_OF_PROGRAM_PATH = 1;
+char *programpath[] = {};
+//programpath[0] = "/bin";
 void readfromfile(const char *command)
 {
     int status = system(command);
@@ -22,11 +24,8 @@ void readfromfile(const char *command)
 }
 void printdot()
 {
-    sleep(1);
     printf(". ");
-    sleep(1);
     printf(". ");
-    sleep(1);
     printf(". \n");
 }
 char *fetch_program_path(char *arg1, const char *arg2)
@@ -63,11 +62,12 @@ int main(int argc, char *argv[])
         size_t read = 0;
         char *myargs[10];
         myargs[0] = input;
-        char *programpath[] = {};
+        // char *programpath[] = {};
         programpath[0] = "/bin";
         char *redirection[20];
         redirection[0] = input;
         myargs[10] = NULL;
+        // printf("dash>: ");
         while (1)
         {
             int i = 0;
@@ -101,15 +101,14 @@ int main(int argc, char *argv[])
                     myargs[j] = inner_token;
                 }
                 printf(" ---------separate here---------- woshishabi2 \n");
-                if (myargs[0] != NULL  && (strcmp(myargs[0], "BYE") == 0 || strcmp(myargs[0], "BYE\n") == 0))
+                if (myargs[0] != NULL && (strcmp(myargs[0], "BYE") == 0 || strcmp(myargs[0], "BYE\n") == 0))
                 {
                     printf("Goodbye, exiting shell ... \n");
-                    return 0;
-                    exit(0);
+                    exit(EXIT_SUCCESS);
                 }
-                else if (myargs[0] != NULL  && (strcmp(myargs[0], "cd") == 0 || strcmp(myargs[0], "cd\n") == 0))
+                else if (myargs[0] != NULL && (strcmp(myargs[0], "cd") == 0 || strcmp(myargs[0], "cd\n") == 0))
                 {
-                    if (j == 2 )
+                    if (j == 2)
                     {
                         printf("Change directory to: %s \n", myargs[1]);
                         chdir(myargs[1]);
@@ -123,33 +122,36 @@ int main(int argc, char *argv[])
                 }
                 else if (myargs[0] != NULL && (strcmp(myargs[0], "path") == 0 || strcmp(myargs[0], "path\n") == 0))
                 {
-                    if(j == 1)
+                    if (j == 1)
                     {
                         printf("Default Directory enabled \n");
                         NUM_OF_PROGRAM_PATH = 1;
-                    break;
+                        break;
                     }
-                    else{
-                        int path_num=1;
+                    else
+                    {
+                        int path_num = 1;
                         NUM_OF_PROGRAM_PATH = j;
-                        while(path_num<NUM_OF_PROGRAM_PATH){
-                            
+                        while (path_num < NUM_OF_PROGRAM_PATH)
+                        {
+
                             programpath[path_num] = myargs[path_num];
-                            printf("Path %s Added \n",programpath[path_num]);
+                            printf("Path %s Added \n", programpath[path_num]);
                             path_num++;
                         }
-                    break;    
+                        break;
                     }
                 }
-                else pass;
+                else
+                    pass;
                 char *temp = NULL;
                 printf(" ---------separate here---------- woshishabi3 above\n");
                 temp = myargs[0];
                 myargs[0] = strdup(fetch_program_path(programpath[0], myargs[0]));
                 printf("%s  %s  %s  %s  %s\n", myargs[0], myargs[1], myargs[2], myargs[3], myargs[4]);
                 printf(" ---------separate here---------- arg above\n");
-                int rc = fork();
-                if (rc == 0)
+                pid_t childpid = fork();
+                if (childpid == 0)
                 {
                     int logic_imp;
                     int redirect_counter = 0;
@@ -190,33 +192,35 @@ int main(int argc, char *argv[])
                     printf("%s \n", programpath[0]);
                     printf(" ---------separate here---------- path above\n");
                     execv(myargs[0], myargs);
-                    printf("%s \n", programpath[0]);
+                    printf("%s  %s  %s  %s  %s \n", programpath[0],programpath[1],programpath[2],programpath[3],programpath[4]);
                     printf(" ---------separate here---------- path above\n");
                     int path_counter = 1; // start from 1 because default is 0
+                    printf("original path /bin/ not aviliable \n");
                     while (1)
-                    {    
-                        printf("Path Directory '%s' not accessable, trying alternative path %s . . . \n", programpath[path_counter-1],programpath[path_counter]);
+                    {
+                        printf("Path Directory '%s' not accessable, trying alternative path %s . . . \n", programpath[path_counter - 1], programpath[path_counter]);
                         myargs[0] = strdup(fetch_program_path(programpath[path_counter], temp));
                         execv(myargs[0], myargs);
+                        //    /bin/clear
                         path_counter++;
-                        if(programpath[path_counter]==NULL) {
+                        if (programpath[path_counter] == NULL)
+                        {
                             printf("All PATH Unaviliable, returning to shell \n");
-                            break;
+                            exit(0);
                         }
                     }
-
                 }
-                else
-                {
-                    wait(NULL);
-                }
-                                memset(myargs, '\0', sizeof(myargs));
-            sentence_token = strtok_r(NULL, sentencebreaker,
-                                      &sentence);
+                else{
+                int status;
+                waitpid(childpid, &status, 0);
+                                          }
+                memset(myargs, '\0', sizeof(myargs));
+                sentence_token = strtok_r(NULL, sentencebreaker,
+                                          &sentence);
             }
         }
-        free(input);
     }
+
     else if (argc == 2)
     {
         printf("Entering Batch Mode \n");
