@@ -14,6 +14,7 @@ const char sentencebreaker[] = "&";
 const char wordbreaker[] = " ";
 const char redirectionbreaker[] = ">";
 char *defaultpath = ("/bin/");
+char *defaultpath2 = ("./");
 char **programpath = NULL;
 
 void add_path_root(const char *path)
@@ -25,11 +26,12 @@ void add_path_root(const char *path)
 }
 void reset_path()
 {
-    NUM_OF_PROGRAM_PATH = 1;
+    NUM_OF_PROGRAM_PATH = 2;
     free(programpath);
     programpath = NULL;
     programpath = (char **)realloc(programpath, (NUM_OF_PROGRAM_PATH + 1) * sizeof(char *));
     programpath[0] = "/bin/";
+    programpath[1] ="./";
 }
 void readfromfile(const char *command)
 {
@@ -71,6 +73,7 @@ int main(int argc, char *argv[])
     char *myargs[500];
     myargs[0] = input;
     add_path_root(defaultpath);
+    add_path_root(defaultpath2);
     char *redirection[20];
     redirection[0] = input;
     myargs[500] = NULL;
@@ -85,6 +88,7 @@ int main(int argc, char *argv[])
         }
         while (1)
         {
+            int sentence_count = 0;
             int i = 0;
 
             printf("dash>: ");
@@ -102,20 +106,37 @@ int main(int argc, char *argv[])
                     memmove(&input[x], &input[x + 1], strlen(input) - x);
                 }
             }
+            int redirect_count = 0;
+
+            for (x = 0; input[x] != '\0'; x++)
+            {
+                if (input[x] == '&')
+                {
+                    sentence_count++;
+                }
+                else if (input[x] == '>')
+                {
+                    redirect_count++;
+                }
+                else pass;
+            }
             char *sentence_token = strtok_r(input, sentencebreaker, &sentence);
+            if(i =0,sentence_token == NULL && sentence_count > 0){
+                printf("sentence error \n");
+                pass;
+            }
             while (sentence_token != NULL)
             {
                 i++;
                 // printf("woshishabi1 \n");
                 char *redirection_token = strtok_r(sentence_token, redirectionbreaker, &re_dir);
+
                 int redir_counter = 0;
                 int j = 0;
                 int k = 0;
                 while (redirection_token != NULL)
                 {
-
                     char *inner_token = strtok_r(redirection_token, wordbreaker, &words);
-
                     if (redir_counter == 0)
                     {
                         myargs[j] = inner_token;
@@ -126,8 +147,8 @@ int main(int argc, char *argv[])
                             myargs[j] = inner_token;
                         }
                     }
-
                     redir_counter++;
+
                     if (redir_counter > 0)
                     {
                         redirection[k] = inner_token;
@@ -138,6 +159,7 @@ int main(int argc, char *argv[])
                             redirection[k] = inner_token;
                         }
                     }
+
                     redirection_token = strtok_r(NULL, redirectionbreaker, &re_dir);
                 }
                 if (myargs[0] != NULL && (strcmp(myargs[0], "exit") == 0 || strcmp(myargs[0], "exit\n") == 0))
@@ -215,14 +237,13 @@ int main(int argc, char *argv[])
                     else
                         pass;
                     char *temp = NULL;
-                    if (myargs[0] == NULL)
-                    {
-                        exit(0);
-                    }
+
+                    printf("%d, %d \n", sentence_count, redirect_count);
+                    printf("%s  %s  %s  %s  %s\n", myargs[0], myargs[1], myargs[2], myargs[3], myargs[4]);
                     temp = myargs[0];
                     myargs[0] = strdup(fetch_program_path(programpath[0], myargs[0]));
 
-                    //  printf("woshishabi2 %s %d \n", redirection_token,redir_counter);
+                    // printf("woshishabi2 %s %d \n", redirection_token,redir_counter);
                     if (redir_counter > 3)
                     {
                         printf("Redirection with multiple '>', returning to shell \n");
@@ -230,6 +251,19 @@ int main(int argc, char *argv[])
                     }
 
                     int fd;
+                    if(sentence_count!=0 && myargs[0] == NULL){
+                        printf("Error re \n");
+                        exit(0);
+                    }
+                    if (myargs[0] == NULL)
+                    {
+                        exit(0);
+                    }
+                    if (redirect_count > 0 && redirection[0] == NULL)
+                    {
+                        printf("Error re \n");
+                        exit(0);
+                    }
                     if (redir_counter == 2)
                     {
                         if (redirection[1] != NULL)
@@ -292,6 +326,7 @@ int main(int argc, char *argv[])
             return 1;
         }
         int i = 0;
+        int sentence_count = 0;
         while (getline(&input, &length, batchFile) != -1)
         {
             int x;
@@ -302,7 +337,25 @@ int main(int argc, char *argv[])
                     memmove(&input[x], &input[x + 1], strlen(input) - x);
                 }
             }
+                        int redirect_count = 0;
+            for (x = 0; input[x] != '\0'; x++)
+            {
+                if (input[x] == '&')
+                {
+                    sentence_count++;
+                }
+                else if (input[x] == '>')
+                {
+                    redirect_count++;
+                }
+                else pass;
+            }
+
             char *sentence_token = strtok_r(input, sentencebreaker, &sentence);
+                        if(i =0,sentence_token == NULL && sentence_count > 0){
+                printf("sentence error \n");
+                pass;
+            }
             while (sentence_token != NULL)
             {
                 i++;
@@ -430,6 +483,11 @@ int main(int argc, char *argv[])
                     }
 
                     int fd;
+                    if (redirect_count > 0 && redirection[0] == NULL)
+                    {
+                        printf("Error re \n");
+                        exit(0);
+                    }
                     if (redir_counter == 2)
                     {
                         if (redirection[1] != NULL)
@@ -455,6 +513,7 @@ int main(int argc, char *argv[])
                             exit(0);
                         }
                     }
+
                     execv(myargs[0], myargs);
                     int path_counter = 1; // start from 1 because default is 0
                     while (1)
