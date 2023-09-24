@@ -31,7 +31,7 @@ void reset_path()
     programpath = NULL;
     programpath = (char **)realloc(programpath, (NUM_OF_PROGRAM_PATH + 1) * sizeof(char *));
     programpath[0] = "/bin/";
-    programpath[1] ="./";
+    programpath[1] = "./";
 }
 void readfromfile(const char *command)
 {
@@ -118,10 +118,12 @@ int main(int argc, char *argv[])
                 {
                     redirect_count++;
                 }
-                else pass;
+                else
+                    pass;
             }
             char *sentence_token = strtok_r(input, sentencebreaker, &sentence);
-            if(i =0,sentence_token == NULL && sentence_count > 0){
+            if (i = 0, sentence_token == NULL && sentence_count > 0)
+            {
                 printf("sentence error \n");
                 pass;
             }
@@ -251,7 +253,8 @@ int main(int argc, char *argv[])
                     }
 
                     int fd;
-                    if(sentence_count!=0 && myargs[0] == NULL){
+                    if (sentence_count != 0 && myargs[0] == NULL)
+                    {
                         printf("Error re \n");
                         exit(0);
                     }
@@ -325,6 +328,14 @@ int main(int argc, char *argv[])
             perror("Error opening batch file");
             return 1;
         }
+        fseek(batchFile, 0, SEEK_END);
+        long file_size = ftell(batchFile);
+        if (file_size == 0)
+        {
+            printf("File is empty.\n");
+            fclose(batchFile);
+            exit(0);
+        }
         int i = 0;
         int sentence_count = 0;
         while (getline(&input, &length, batchFile) != -1)
@@ -337,7 +348,7 @@ int main(int argc, char *argv[])
                     memmove(&input[x], &input[x + 1], strlen(input) - x);
                 }
             }
-                        int redirect_count = 0;
+            int redirect_count = 0;
             for (x = 0; input[x] != '\0'; x++)
             {
                 if (input[x] == '&')
@@ -348,11 +359,13 @@ int main(int argc, char *argv[])
                 {
                     redirect_count++;
                 }
-                else pass;
+                else
+                    pass;
             }
 
             char *sentence_token = strtok_r(input, sentencebreaker, &sentence);
-                        if(i =0,sentence_token == NULL && sentence_count > 0){
+            if (i = 0, sentence_token == NULL && sentence_count > 0)
+            {
                 printf("sentence error \n");
                 pass;
             }
