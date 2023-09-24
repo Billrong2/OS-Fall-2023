@@ -9,7 +9,6 @@
 
 #define pass (void)0
 int NUM_OF_PROGRAM_PATH = 0;
-int error_counter = 0;
 size_t length = 100;
 const char sentencebreaker[] = "&";
 const char wordbreaker[] = " ";
@@ -21,8 +20,7 @@ void perrormsg()
 {
     char error_message[30] = "An error has occurred\n";
     write(STDERR_FILENO, error_message, strlen(error_message));
-    error_counter++;
-    printf("%d \n", error_counter);
+
 }
 void add_path_root(const char *path)
 {
@@ -103,6 +101,7 @@ int main(int argc, char *argv[])
             if (read == -1)
             {
                 perrormsg();
+
                 return 1;
             }
             int x;
@@ -114,21 +113,26 @@ int main(int argc, char *argv[])
                 }
             }
             int redirect_count = 0;
-
             for (x = 0; input[x] != '\0'; x++)
             {
                 if (input[x] == '&')
                 {
                     sentence_count++;
                 }
-                else if (input[x] == '>')
+                else
+                    pass;
+            }
+            char *sentence_token = strtok_r(input, sentencebreaker, &sentence);
+            for (x = 0; sentence_token[x] != '\0'; x++)
+            {
+                if (sentence_token[x] == '>')
                 {
                     redirect_count++;
                 }
                 else
                     pass;
             }
-            char *sentence_token = strtok_r(input, sentencebreaker, &sentence);
+
             if (i = 0, sentence_token == NULL && sentence_count > 0)
             {
                 perrormsg();
@@ -137,7 +141,6 @@ int main(int argc, char *argv[])
             while (sentence_token != NULL)
             {
                 i++;
-                printf("woshishabi1 \n");
                 char *redirection_token = strtok_r(sentence_token, redirectionbreaker, &re_dir);
 
                 int redir_counter = 0;
@@ -191,20 +194,24 @@ int main(int argc, char *argv[])
                     {
                         if (getcwd(cwd, sizeof(cwd)) == NULL)
                         {
+
                             perrormsg();
+                            
                         }
                         strcat(cwd, "/");
-                        ;
                         myargs[1] = strdup(fetch_program_path(cwd, myargs[1]));
                         chdir(myargs[1]);
                         if (chdir(myargs[1]) != 0)
                         {
                             perrormsg();
+                            
                         }
                     }
                     else
                     {
+
                         perrormsg();
+                        
                     }
                 }
                 pid_t childpid = fork();
@@ -262,7 +269,7 @@ int main(int argc, char *argv[])
                     {
                         exit(0);
                     }
-                    if (redirect_count > 0 && redirection[0] == NULL)
+                    if (redirect_count > 0 && redirection[0] == NULL )
                     {
                         perrormsg();
                         exit(0);
@@ -359,15 +366,20 @@ int main(int argc, char *argv[])
                 {
                     sentence_count++;
                 }
-                else if (input[x] == '>')
+                else
+                    pass;
+            }
+
+            char *sentence_token = strtok_r(input, sentencebreaker, &sentence);
+            for (x = 0; sentence_token[x] != '\0'; x++)
+            {
+                if (sentence_token[x] == '>')
                 {
                     redirect_count++;
                 }
                 else
                     pass;
             }
-
-            char *sentence_token = strtok_r(input, sentencebreaker, &sentence);
             if (i = 0, sentence_token == NULL && sentence_count > 0)
             {
                 perrormsg();
@@ -375,6 +387,7 @@ int main(int argc, char *argv[])
             }
             while (sentence_token != NULL)
             {
+                
                 i++;
                 // printf("woshishabi1 \n");
                 char *redirection_token = strtok_r(sentence_token, redirectionbreaker, &re_dir);
