@@ -12,6 +12,7 @@ int NUM_OF_PROGRAM_PATH = 0;
 size_t length = 100;
 const char sentencebreaker[] = "&";
 const char wordbreaker[] = " ";
+const char redirectionbreaker[] = ">";
 char *defaultpath = ("/bin/");
 char **programpath = NULL;
 
@@ -64,6 +65,7 @@ int main(int argc, char *argv[])
 {
     char *input = malloc(sizeof(char) * length);
     char *sentence = NULL;
+    char *re_dir = NULL;
     char *words = NULL;
     size_t read = 0;
     char *myargs[500];
@@ -84,7 +86,8 @@ int main(int argc, char *argv[])
         while (1)
         {
             int i = 0;
-            int j = 0;
+
+            
             printf("dash>: ");
             read = getline(&input, &length, stdin);
             if (read == -1)
@@ -104,26 +107,65 @@ int main(int argc, char *argv[])
             while (sentence_token != NULL)
             {
                 i++;
-                char *inner_token = strtok_r(sentence_token, wordbreaker, &words);
-                myargs[j] = inner_token;
-                while (inner_token != NULL)
+                //printf("woshishabi1 \n");
+                char *redirection_token = strtok_r(sentence_token, redirectionbreaker, &re_dir);
+                int redir_counter = 0;
+                            int j = 0;
+            int k = 0;
+                while(redirection_token != NULL)
                 {
-                    inner_token = strtok_r(NULL, wordbreaker, &words);
-                    j++;
-                    myargs[j] = inner_token;
+
+                    
+                    char *inner_token = strtok_r(redirection_token, wordbreaker, &words);
+
+                    if(redir_counter == 0)
+                    {
+                        myargs[j] = inner_token;
+                        while (inner_token != NULL)
+                        {
+                            inner_token = strtok_r(NULL, wordbreaker, &words);
+                            j++;
+                            myargs[j] = inner_token;
+                        }
+                    }
+
+                    redir_counter++;
+                    if(redir_counter > 0 )
+                    {
+                        redirection[k] = inner_token;
+                        while (inner_token != NULL)
+                        {
+                            inner_token = strtok_r(NULL, wordbreaker, &words);
+                            k++;
+                            redirection[k] = inner_token;
+                        }
+                    }
+                    redirection_token = strtok_r(NULL, redirectionbreaker, &re_dir);
                 }
+                printf("%s  %s  %s  %s  %s\n", myargs[0], myargs[1], myargs[2], myargs[3], myargs[4]);
                 if (myargs[0] != NULL && (strcmp(myargs[0], "exit") == 0 || strcmp(myargs[0], "exit\n") == 0))
                 {
-                    printf("Goodbye, exiting shell ... \n");
-                    exit(EXIT_SUCCESS);
+                    if (j == 1)
+                    {
+                        printf("Goodbye, exiting shell ... \n");
+                        exit(EXIT_FAILURE);
+                    }
+                    else
+                    {
+                        printf("Exit does not take any arguement \nExit failed\n");
+                        break;
+                    }
                 }
                 else if (myargs[0] != NULL && (strcmp(myargs[0], "cd") == 0 || strcmp(myargs[0], "cd\n") == 0))
                 {
                     if (j == 2)
                     {
-                        printf("Change directory to: %s \n", myargs[1]);
+                        // printf("Change directory to: %s \n", myargs[1]);
                         chdir(myargs[1]);
-                        break;
+                        if (chdir(myargs[1]) != 0)
+                        {
+                            printf("change directory to %s failed, no such directory\n", myargs[1]);
+                        }
                     }
                     else
                     {
@@ -164,62 +206,56 @@ int main(int argc, char *argv[])
                 else
                     pass;
                 char *temp = NULL;
+                if (myargs[0] == NULL)
+                {
+                    break;
+                }
                 temp = myargs[0];
                 myargs[0] = strdup(fetch_program_path(programpath[0], myargs[0]));
-                // printf("%s  %s  %s  %s  %s\n", myargs[0], myargs[1], myargs[2], myargs[3], myargs[4]);
-                // printf(" ---------separate here---------- arg above\n");
-                // for (x = 0; i < NUM_OF_PROGRAM_PATH; i++)
-                // {
-                //     printf("Program %d path: %s\n", i + 1, programpath[i]);
-                // }
                 pid_t childpid = fork();
                 if (childpid == 0)
                 {
-                    int logic_imp;
-                    int redirect_counter = 0;
-                    int doublecheck = 0;
-                    for (logic_imp = 0; logic_imp < j; logic_imp++)
-                    {
-                        if (strcmp(myargs[logic_imp], ">") == 0)
+
+                                        printf("woshishabi2 %s %d \n", redirection_token,redir_counter);
+                        if (redir_counter >3)
                         {
-                            for (x = logic_imp; x <= j; x++)
-                            {
-                                redirection[redirect_counter] = myargs[x + 1];
-                                myargs[logic_imp] = NULL;
-                                redirect_counter++;
-                            }
-                            doublecheck++;
+                            printf("Redirection with multiple '>', returning to shell \n");
+                            exit(0);
                         }
-                        if (doublecheck > 1)
-                        {
-                            printf("Invalid Input, returning shell . . . \n");
-                            break;
-                        }
-                        else
-                        {
-                            pass;
-                        }
-                    }
+                    
+
                     int fd;
-                    if (doublecheck == 1)
+                    if (redir_counter == 2)
                     {
-                        fd = open(*redirection, O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
-                        if (fd == -1 && doublecheck == 1)
+                                            if (redirection[1] != NULL)
+                    {
+                        printf("Redirection not accepting multiple directions, returning to shell \n");
+                        exit(0);
+                    }
+                    if (redirection[0] == NULL)
+                    {
+                        printf("No file name input detected, returning to shell \n");
+                        exit(0);
+                    }
+                        fd = open(*redirection, O_WRONLY | O_APPEND | O_CREAT, S_IRUSR | S_IWUSR);
+                        if (fd == -1)
                         {
                             printf("File Open Failed . . . \n");
                             printf("returning to shell . . .\n");
+                            break;
                         }
-                        dup2(fd, 1);
+                        if (dup2(fd, STDOUT_FILENO) == -1)
+                        {
+                            perror("Error redirecting stdout");
+                            break;
+                        }
                     }
                     execv(myargs[0], myargs);
                     int path_counter = 1; // start from 1 because default is 0
-                    // printf("original path /bin/ not aviliable \n");
                     while (1)
                     {
-                        // printf("Path Directory '%s' not accessable, trying alternative path %s . . . \n", programpath[path_counter - 1], programpath[path_counter]);
                         myargs[0] = strdup(fetch_program_path(programpath[path_counter], temp));
                         execv(myargs[0], myargs);
-                        //    /bin/clear
                         path_counter++;
                         if (programpath[path_counter] == NULL)
                         {
@@ -276,15 +312,27 @@ int main(int argc, char *argv[])
                 }
                 if (myargs[0] != NULL && (strcmp(myargs[0], "exit") == 0 || strcmp(myargs[0], "exit\n") == 0))
                 {
-                    printf("Goodbye, exiting shell ... \n");
-                    exit(EXIT_SUCCESS);
+                    if (j == 1)
+                    {
+                        printf("Goodbye, exiting shell ... \n");
+                        exit(EXIT_FAILURE);
+                    }
+                    else
+                    {
+                        printf("Exit does not take any arguement \nExit failed\n");
+                        break;
+                    }
                 }
                 else if (myargs[0] != NULL && (strcmp(myargs[0], "cd") == 0 || strcmp(myargs[0], "cd\n") == 0))
                 {
                     if (j == 2)
                     {
-                        printf("Change directory to: %s \n", myargs[1]);
+                        // printf("Change directory to: %s \n", myargs[1]);
                         chdir(myargs[1]);
+                        if (chdir(myargs[1]) != 0)
+                        {
+                            printf("change directory to %s failed, no such directory\n", myargs[1]);
+                        }
                         break;
                     }
                     else
@@ -326,17 +374,16 @@ int main(int argc, char *argv[])
                 else
                     pass;
                 char *temp = NULL;
+                if (myargs[0] == NULL)
+                {
+                    break;
+                }
                 temp = myargs[0];
                 myargs[0] = strdup(fetch_program_path(programpath[0], myargs[0]));
-                // printf("%s  %s  %s  %s  %s\n", myargs[0], myargs[1], myargs[2], myargs[3], myargs[4]);
-                // printf(" ---------separate here---------- arg above\n");
-                // for (x = 0; i < NUM_OF_PROGRAM_PATH; i++)
-                // {
-                //     printf("Program %d path: %s\n", i + 1, programpath[i]);
-                // }
                 pid_t childpid = fork();
                 if (childpid == 0)
                 {
+
                     int logic_imp;
                     int redirect_counter = 0;
                     int doublecheck = 0;
@@ -354,38 +401,51 @@ int main(int argc, char *argv[])
                         }
                         if (doublecheck > 1)
                         {
-                            printf("Invalid Input, returning shell . . . \n");
-                            break;
+                            printf("Redirection with multiple '>', returning to shell \n");
+                            exit(0);
                         }
                         else
                         {
                             pass;
                         }
                     }
+                    if (redirection[1] != NULL)
+                    {
+                        printf("Redirection not accepting multiple directions, returning to shell \n");
+                        exit(0);
+                    }
+                    if (redirection[0] == NULL)
+                    {
+                        printf("No file name input detected, returning to shell \n");
+                        exit(0);
+                    }
                     int fd;
                     if (doublecheck == 1)
                     {
-                        fd = open(*redirection, O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IRGRP | S_IWGRP | S_IWUSR);
+                        fd = open(*redirection, O_WRONLY | O_APPEND | O_CREAT, S_IRUSR | S_IWUSR);
                         if (fd == -1 && doublecheck == 1)
                         {
                             printf("File Open Failed . . . \n");
                             printf("returning to shell . . .\n");
+                            break;
                         }
-                        dup2(fd, 1);
+                        if (dup2(fd, STDOUT_FILENO) == -1)
+                        {
+                            perror("Error redirecting stdout");
+                            break;
+                        }
                     }
+
                     execv(myargs[0], myargs);
-                    int path_counter = 1; // start from 1 because default is 0
-                    //printf("original path /bin/ not aviliable \n");
+                    int path_counter = 1;
                     while (1)
                     {
-                        //printf("Path Directory '%s' not accessable, trying alternative path %s . . . \n", programpath[path_counter - 1], programpath[path_counter]);
                         myargs[0] = strdup(fetch_program_path(programpath[path_counter], temp));
                         execv(myargs[0], myargs);
-                        //    /bin/clear
                         path_counter++;
                         if (programpath[path_counter] == NULL)
                         {
-                            printf("All PATH Unaviliable, returning to shell \n");
+                            printf("an error has occured");
                             exit(0);
                         }
                     }
