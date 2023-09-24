@@ -122,8 +122,19 @@ int main(int argc, char *argv[])
                 else
                     pass;
             }
+            
             char *sentence_token = strtok_r(input, sentencebreaker, &sentence);
-            for (x = 0; sentence_token[x] != '\0'; x++)
+
+            if (i == 0 && sentence_token == NULL && sentence_count == 1)
+            {
+                perrormsg();
+            }
+
+
+            while (sentence_token != NULL)
+            {
+
+            for (x = 0; input[x] != '\0'; x++)
             {
                 if (sentence_token[x] == '>')
                 {
@@ -132,14 +143,6 @@ int main(int argc, char *argv[])
                 else
                     pass;
             }
-
-            if (i = 0, sentence_token == NULL && sentence_count > 0)
-            {
-                perrormsg();
-                pass;
-            }
-            while (sentence_token != NULL)
-            {
                 i++;
                 char *redirection_token = strtok_r(sentence_token, redirectionbreaker, &re_dir);
 
@@ -367,10 +370,18 @@ int main(int argc, char *argv[])
                     sentence_count++;
                 }
                 else
-                    pass;
+                    break;
             }
 
             char *sentence_token = strtok_r(input, sentencebreaker, &sentence);
+
+            if (i == 0 && sentence_token == NULL && sentence_count == 1)
+            {
+                perrormsg();
+            }
+
+            while (sentence_token != NULL)
+            {
             for (x = 0; sentence_token[x] != '\0'; x++)
             {
                 if (sentence_token[x] == '>')
@@ -380,13 +391,6 @@ int main(int argc, char *argv[])
                 else
                     pass;
             }
-            if (i = 0, sentence_token == NULL && sentence_count > 0)
-            {
-                perrormsg();
-                pass;
-            }
-            while (sentence_token != NULL)
-            {
                 
                 i++;
                 // printf("woshishabi1 \n");
@@ -562,6 +566,7 @@ int main(int argc, char *argv[])
                 sentence_token = strtok_r(NULL, sentencebreaker,
                                           &sentence);
             }
+
         }
     }
     exit(EXIT_SUCCESS);
