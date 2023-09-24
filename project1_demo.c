@@ -125,7 +125,7 @@ int main(int argc, char *argv[])
             
             char *sentence_token = strtok_r(input, sentencebreaker, &sentence);
 
-            if (i == 0 && sentence_token == NULL && sentence_count == 1)
+            if (i == 0 && sentence_token == NULL && sentence_count >= 1)
             {
                 perrormsg();
             }
@@ -349,7 +349,6 @@ int main(int argc, char *argv[])
         {
             fseek(batchFile, 0, SEEK_SET);
         }
-
         int i = 0;
         int sentence_count = 0;
         while (getline(&input, &length, batchFile) != -1)
@@ -374,8 +373,7 @@ int main(int argc, char *argv[])
             }
 
             char *sentence_token = strtok_r(input, sentencebreaker, &sentence);
-
-            if (i == 0 && sentence_token == NULL && sentence_count == 1)
+            if (i == 0 && sentence_token == NULL && sentence_count >= 1)
             {
                 perrormsg();
             }
