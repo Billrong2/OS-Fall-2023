@@ -20,3 +20,6 @@ bath, path, cd implemented, bugs in path, separate main
 
 ### 9/22
 BYE, path, cd bugs fixed, renamed, awaits for testing
+
+### 9/23
+Change of structure, awaits for full detailing.
