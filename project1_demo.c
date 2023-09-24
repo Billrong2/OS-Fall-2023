@@ -87,7 +87,6 @@ int main(int argc, char *argv[])
         {
             int i = 0;
 
-            
             printf("dash>: ");
             read = getline(&input, &length, stdin);
             if (read == -1)
@@ -107,18 +106,17 @@ int main(int argc, char *argv[])
             while (sentence_token != NULL)
             {
                 i++;
-                //printf("woshishabi1 \n");
+                // printf("woshishabi1 \n");
                 char *redirection_token = strtok_r(sentence_token, redirectionbreaker, &re_dir);
                 int redir_counter = 0;
-                            int j = 0;
-            int k = 0;
-                while(redirection_token != NULL)
+                int j = 0;
+                int k = 0;
+                while (redirection_token != NULL)
                 {
 
-                    
                     char *inner_token = strtok_r(redirection_token, wordbreaker, &words);
 
-                    if(redir_counter == 0)
+                    if (redir_counter == 0)
                     {
                         myargs[j] = inner_token;
                         while (inner_token != NULL)
@@ -130,7 +128,7 @@ int main(int argc, char *argv[])
                     }
 
                     redir_counter++;
-                    if(redir_counter > 0 )
+                    if (redir_counter > 0)
                     {
                         redirection[k] = inner_token;
                         while (inner_token != NULL)
@@ -142,7 +140,6 @@ int main(int argc, char *argv[])
                     }
                     redirection_token = strtok_r(NULL, redirectionbreaker, &re_dir);
                 }
-                printf("%s  %s  %s  %s  %s\n", myargs[0], myargs[1], myargs[2], myargs[3], myargs[4]);
                 if (myargs[0] != NULL && (strcmp(myargs[0], "exit") == 0 || strcmp(myargs[0], "exit\n") == 0))
                 {
                     if (j == 1)
@@ -156,98 +153,106 @@ int main(int argc, char *argv[])
                         break;
                     }
                 }
-                else if (myargs[0] != NULL && (strcmp(myargs[0], "cd") == 0 || strcmp(myargs[0], "cd\n") == 0))
+                if (myargs[0] != NULL && (strcmp(myargs[0], "cd") == 0 || strcmp(myargs[0], "cd\n") == 0))
                 {
-                    if (j == 2)
+                    char cwd[256];
+                    if (myargs[1] != NULL && myargs[2] == NULL)
                     {
-                        // printf("Change directory to: %s \n", myargs[1]);
+                        if (getcwd(cwd, sizeof(cwd)) == NULL)
+                        {
+                            perror("getcwd() error");
+                        }
+                        strcat(cwd, "/");
+                        ;
+                        myargs[1] = strdup(fetch_program_path(cwd, myargs[1]));
                         chdir(myargs[1]);
                         if (chdir(myargs[1]) != 0)
                         {
                             printf("change directory to %s failed, no such directory\n", myargs[1]);
                         }
+                        perror("chdir");
                     }
                     else
                     {
                         printf("Invalid directory path, returning to shell . . . \n");
-                        break;
+                        perror("chdir");
                     }
                 }
-                else if (myargs[0] != NULL && (strcmp(myargs[0], "path") == 0 || strcmp(myargs[0], "path\n") == 0))
-                {
-                    if (j == 1)
-                    {
-                        printf("Default Directory enabled \n");
-                        reset_path();
-                        break;
-                    }
-                    else
-                    {
-                        int path_num = 1;
-                        while (1)
-                        {
-                            if (myargs[path_num] != NULL)
-                            {
-                                add_path_root(myargs[path_num]);
-                                if (programpath[path_num] == NULL)
-                                {
-                                    printf("Path Add Failed \n");
-                                    break;
-                                }
-                                printf("Path %s Added \n", programpath[path_num]);
-                                printf("%d \n", path_num);
-                                path_num++;
-                            }
-                            else
-                                break;
-                        }
-                    }
-                }
-                else
-                    pass;
-                char *temp = NULL;
-                if (myargs[0] == NULL)
-                {
-                    break;
-                }
-                temp = myargs[0];
-                myargs[0] = strdup(fetch_program_path(programpath[0], myargs[0]));
                 pid_t childpid = fork();
                 if (childpid == 0)
                 {
 
-                                        printf("woshishabi2 %s %d \n", redirection_token,redir_counter);
-                        if (redir_counter >3)
+                    if (myargs[0] != NULL && (strcmp(myargs[0], "path") == 0 || strcmp(myargs[0], "path\n") == 0))
+                    {
+                        if (j == 1)
                         {
-                            printf("Redirection with multiple '>', returning to shell \n");
+                            printf("Default Directory enabled \n");
+                            reset_path();
                             exit(0);
                         }
-                    
+                        else
+                        {
+                            int path_num = 1;
+                            while (1)
+                            {
+                                if (myargs[path_num] != NULL)
+                                {
+                                    add_path_root(myargs[path_num]);
+                                    if (programpath[path_num] == NULL)
+                                    {
+                                        printf("Path Add Failed \n");
+                                        exit(0);
+                                    }
+                                    printf("Path %s Added \n", programpath[path_num]);
+                                    printf("%d \n", path_num);
+                                    path_num++;
+                                }
+                                else
+                                    exit(0);
+                            }
+                        }
+                    }
+                    else
+                        pass;
+                    char *temp = NULL;
+                    if (myargs[0] == NULL)
+                    {
+                        exit(0);
+                    }
+                    temp = myargs[0];
+                    myargs[0] = strdup(fetch_program_path(programpath[0], myargs[0]));
+
+                    //  printf("woshishabi2 %s %d \n", redirection_token,redir_counter);
+                    if (redir_counter > 3)
+                    {
+                        printf("Redirection with multiple '>', returning to shell \n");
+                        exit(0);
+                    }
 
                     int fd;
                     if (redir_counter == 2)
                     {
-                                            if (redirection[1] != NULL)
-                    {
-                        printf("Redirection not accepting multiple directions, returning to shell \n");
-                        exit(0);
-                    }
-                    if (redirection[0] == NULL)
-                    {
-                        printf("No file name input detected, returning to shell \n");
-                        exit(0);
-                    }
+                        if (redirection[1] != NULL)
+                        {
+                            printf("Redirection not accepting multiple directions, returning to shell \n");
+                            exit(0);
+                        }
+                        if (redirection[0] == NULL)
+                        {
+                            printf("No file name input detected, returning to shell \n");
+                            exit(0);
+                        }
                         fd = open(*redirection, O_WRONLY | O_APPEND | O_CREAT, S_IRUSR | S_IWUSR);
                         if (fd == -1)
                         {
                             printf("File Open Failed . . . \n");
                             printf("returning to shell . . .\n");
-                            break;
+                            exit(0);
                         }
                         if (dup2(fd, STDOUT_FILENO) == -1)
                         {
                             perror("Error redirecting stdout");
-                            break;
+                            exit(0);
                         }
                     }
                     execv(myargs[0], myargs);
@@ -286,10 +291,9 @@ int main(int argc, char *argv[])
             perror("Error opening batch file");
             return 1;
         }
+        int i = 0;
         while (getline(&input, &length, batchFile) != -1)
         {
-            int i = 0;
-            int j = 0;
             int x;
             for (x = 0; input[x] != '\0'; x++)
             {
@@ -302,13 +306,39 @@ int main(int argc, char *argv[])
             while (sentence_token != NULL)
             {
                 i++;
-                char *inner_token = strtok_r(sentence_token, wordbreaker, &words);
-                myargs[j] = inner_token;
-                while (inner_token != NULL)
+                // printf("woshishabi1 \n");
+                char *redirection_token = strtok_r(sentence_token, redirectionbreaker, &re_dir);
+                int redir_counter = 0;
+                int j = 0;
+                int k = 0;
+                while (redirection_token != NULL)
                 {
-                    inner_token = strtok_r(NULL, wordbreaker, &words);
-                    j++;
-                    myargs[j] = inner_token;
+
+                    char *inner_token = strtok_r(redirection_token, wordbreaker, &words);
+
+                    if (redir_counter == 0)
+                    {
+                        myargs[j] = inner_token;
+                        while (inner_token != NULL)
+                        {
+                            inner_token = strtok_r(NULL, wordbreaker, &words);
+                            j++;
+                            myargs[j] = inner_token;
+                        }
+                    }
+
+                    redir_counter++;
+                    if (redir_counter > 0)
+                    {
+                        redirection[k] = inner_token;
+                        while (inner_token != NULL)
+                        {
+                            inner_token = strtok_r(NULL, wordbreaker, &words);
+                            k++;
+                            redirection[k] = inner_token;
+                        }
+                    }
+                    redirection_token = strtok_r(NULL, redirectionbreaker, &re_dir);
                 }
                 if (myargs[0] != NULL && (strcmp(myargs[0], "exit") == 0 || strcmp(myargs[0], "exit\n") == 0))
                 {
@@ -323,121 +353,110 @@ int main(int argc, char *argv[])
                         break;
                     }
                 }
-                else if (myargs[0] != NULL && (strcmp(myargs[0], "cd") == 0 || strcmp(myargs[0], "cd\n") == 0))
+                if (myargs[0] != NULL && (strcmp(myargs[0], "cd") == 0 || strcmp(myargs[0], "cd\n") == 0))
                 {
-                    if (j == 2)
+                    char cwd[256];
+                    if (myargs[1] != NULL && myargs[2] == NULL)
                     {
-                        // printf("Change directory to: %s \n", myargs[1]);
+                        if (getcwd(cwd, sizeof(cwd)) == NULL)
+                        {
+                            perror("getcwd() error");
+                        }
+                        strcat(cwd, "/");
+                        ;
+                        myargs[1] = strdup(fetch_program_path(cwd, myargs[1]));
                         chdir(myargs[1]);
                         if (chdir(myargs[1]) != 0)
                         {
                             printf("change directory to %s failed, no such directory\n", myargs[1]);
                         }
-                        break;
+                        perror("chdir");
                     }
                     else
                     {
                         printf("Invalid directory path, returning to shell . . . \n");
-                        break;
+                        perror("chdir");
                     }
                 }
-                else if (myargs[0] != NULL && (strcmp(myargs[0], "path") == 0 || strcmp(myargs[0], "path\n") == 0))
-                {
-                    if (j == 1)
-                    {
-                        printf("Default Directory enabled \n");
-                        reset_path();
-                        break;
-                    }
-                    else
-                    {
-                        int path_num = 1;
-                        while (1)
-                        {
-                            if (myargs[path_num] != NULL)
-                            {
-                                add_path_root(myargs[path_num]);
-                                if (programpath[path_num] == NULL)
-                                {
-                                    printf("Path Add Failed \n");
-                                    break;
-                                }
-                                printf("Path %s Added \n", programpath[path_num]);
-                                printf("%d \n", path_num);
-                                path_num++;
-                            }
-                            else
-                                break;
-                        }
-                    }
-                }
-                else
-                    pass;
-                char *temp = NULL;
-                if (myargs[0] == NULL)
-                {
-                    break;
-                }
-                temp = myargs[0];
-                myargs[0] = strdup(fetch_program_path(programpath[0], myargs[0]));
                 pid_t childpid = fork();
                 if (childpid == 0)
                 {
 
-                    int logic_imp;
-                    int redirect_counter = 0;
-                    int doublecheck = 0;
-                    for (logic_imp = 0; logic_imp < j; logic_imp++)
+                    if (myargs[0] != NULL && (strcmp(myargs[0], "path") == 0 || strcmp(myargs[0], "path\n") == 0))
                     {
-                        if (strcmp(myargs[logic_imp], ">") == 0)
+                        if (j == 1)
                         {
-                            for (x = logic_imp; x <= j; x++)
-                            {
-                                redirection[redirect_counter] = myargs[x + 1];
-                                myargs[logic_imp] = NULL;
-                                redirect_counter++;
-                            }
-                            doublecheck++;
-                        }
-                        if (doublecheck > 1)
-                        {
-                            printf("Redirection with multiple '>', returning to shell \n");
+                            printf("Default Directory enabled \n");
+                            reset_path();
                             exit(0);
                         }
                         else
                         {
-                            pass;
+                            int path_num = 1;
+                            while (1)
+                            {
+                                if (myargs[path_num] != NULL)
+                                {
+                                    add_path_root(myargs[path_num]);
+                                    if (programpath[path_num] == NULL)
+                                    {
+                                        printf("Path Add Failed \n");
+                                        exit(0);
+                                    }
+                                    printf("Path %s Added \n", programpath[path_num]);
+                                    printf("%d \n", path_num);
+                                    path_num++;
+                                }
+                                else
+                                    exit(0);
+                            }
                         }
                     }
-                    if (redirection[1] != NULL)
+                    else
+                        pass;
+                    char *temp = NULL;
+                    if (myargs[0] == NULL)
                     {
-                        printf("Redirection not accepting multiple directions, returning to shell \n");
                         exit(0);
                     }
-                    if (redirection[0] == NULL)
+                    temp = myargs[0];
+                    myargs[0] = strdup(fetch_program_path(programpath[0], myargs[0]));
+
+                    //  printf("woshishabi2 %s %d \n", redirection_token,redir_counter);
+                    if (redir_counter > 3)
                     {
-                        printf("No file name input detected, returning to shell \n");
+                        printf("Redirection with multiple '>', returning to shell \n");
                         exit(0);
                     }
+
                     int fd;
-                    if (doublecheck == 1)
+                    if (redir_counter == 2)
                     {
+                        if (redirection[1] != NULL)
+                        {
+                            printf("Redirection not accepting multiple directions, returning to shell \n");
+                            exit(0);
+                        }
+                        if (redirection[0] == NULL)
+                        {
+                            printf("No file name input detected, returning to shell \n");
+                            exit(0);
+                        }
                         fd = open(*redirection, O_WRONLY | O_APPEND | O_CREAT, S_IRUSR | S_IWUSR);
-                        if (fd == -1 && doublecheck == 1)
+                        if (fd == -1)
                         {
                             printf("File Open Failed . . . \n");
                             printf("returning to shell . . .\n");
-                            break;
+                            exit(0);
                         }
                         if (dup2(fd, STDOUT_FILENO) == -1)
                         {
                             perror("Error redirecting stdout");
-                            break;
+                            exit(0);
                         }
                     }
-
                     execv(myargs[0], myargs);
-                    int path_counter = 1;
+                    int path_counter = 1; // start from 1 because default is 0
                     while (1)
                     {
                         myargs[0] = strdup(fetch_program_path(programpath[path_counter], temp));
@@ -445,7 +464,7 @@ int main(int argc, char *argv[])
                         path_counter++;
                         if (programpath[path_counter] == NULL)
                         {
-                            printf("an error has occured");
+                            printf("Invalid path, returning to shell \n");
                             exit(0);
                         }
                     }
@@ -460,12 +479,6 @@ int main(int argc, char *argv[])
                                           &sentence);
             }
         }
-    }
-    else
-    {
-        printf("initilization Failed . . .\n");
-        printf("Terminating\n");
-        exit(0);
     }
     exit(EXIT_SUCCESS);
 }
