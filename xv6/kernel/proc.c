@@ -252,18 +252,42 @@ wait(void)
 //  - swtch to start running that process
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
+
+
+
+
+
+
+
+// we need to add lottery scheduler.
+// first we need to know how many ticket we need, we need to loop over every process to see how many ticket is needed, and we will alloc
+// that process and add the number to struct.
+
+int total_tickets = 0;
+int get_ticket_total(){
+  //struct proc *p = allocproc();
+  struct proc *p;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){ // loop over every processes, we need this a lot
+    if(p->state == RUNNABLE){
+      total_tickets++;}
+  }
+
+  return total_tickets;
+}
+
+
 void
 scheduler(void)
 {
   struct proc *p;
-
   for(;;){
     // Enable interrupts on this processor.
     sti();
 
     // Loop over process table looking for process to run.
+    // need to change this part to lottery scheduler, change the priority for the entire system.
     acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){ // loop over every processes, we need this a lot
       if(p->state != RUNNABLE)
         continue;
 
@@ -273,6 +297,9 @@ scheduler(void)
       proc = p;
       switchuvm(p);
       p->state = RUNNING;
+      //cprintf("about to run something:  %s [pid: %d]\n", proc->name, proc->pid);
+      //get_ticket_total();
+      cprintf("total_tickets is %d\n", total_tickets);
       swtch(&cpu->scheduler, proc->context);
       switchkvm();
 
@@ -281,7 +308,6 @@ scheduler(void)
       proc = 0;
     }
     release(&ptable.lock);
-
   }
 }
 
