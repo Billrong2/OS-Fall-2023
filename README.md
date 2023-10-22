@@ -23,3 +23,8 @@ BYE, path, cd bugs fixed, renamed, awaits for testing
 
 ### 9/23
 Change of structure, awaits for full detailing. All test passed.
+## Project2
+### 10/19 
+new scheduler done
+### 10/20 - 10/21
+大方向性錯誤，重啟項目
