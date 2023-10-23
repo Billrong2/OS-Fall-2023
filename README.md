@@ -28,3 +28,6 @@ Change of structure, awaits for full detailing. All test passed.
 new scheduler done
 ### 10/20 - 10/21
 大方向性錯誤，重啟項目
+### 10/21
+demo done, need testing and pp fix and add name
+
