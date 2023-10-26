@@ -23,8 +23,11 @@ int sys_unlink(void);
 int sys_wait(void);
 int sys_write(void);
 int sys_uptime(void);
+/* added by ysq rxk
+*/
+
 int sys_settickets(void);
 int sys_getpinfo(void);
-
+// end of added code 
 
 #endif // _SYSFUNC_H_

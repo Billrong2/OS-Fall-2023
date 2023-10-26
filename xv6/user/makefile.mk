@@ -16,7 +16,7 @@ USER_PROGS := \
 	tester\
 	usertests\
 	wc\
-	settickets\
+	setticket\
 	getpinfo\
 	forktickets\
 	high_sleep\

@@ -6,17 +6,9 @@
 #include "proc.h"
 #include "spinlock.h"
 #include "random_num.h"
-#include "get_tickets.h"
-
-#define valid_proc
-
-struct
-{
-  struct spinlock lock;
-  struct proc proc[NPROC];
-} ptable;
 
 
+struct ptable_global ptable;
 
 static struct proc *initproc;
 
@@ -31,20 +23,8 @@ void pinit(void)
   initlock(&ptable.lock, "ptable");
 }
 
-/*
-  Code added by xiaokai rong and yeqi qi xxr230000 &
-  creating generating random number based on maxium ticket number.
-*/
-int total_tickets;
-int get_total_tickets()
-{
-  return total_tickets;
-}
 
-// Look in the process table for an UNUSED proc.
-// If found, change state to EMBRYO and initialize
-// state required to run in the kernel.
-// Otherwise return 0.
+
 static struct proc *
 allocproc(void)
 {
@@ -61,6 +41,11 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+  /*
+      ysq rxk added
+  */
+  p->tickets = 1;
+  // add end
   release(&ptable.lock);
 
   // Allocate kernel stack if possible.
@@ -161,10 +146,20 @@ int fork(void)
   }
   np->sz = proc->sz;
   np->parent = proc;
+  /*
+  // ysq rxk, give child same ticket as parents
+  // setp_tickets(np, proc->tickets);
+  //legacy_tickets(np, proc);
+  */
+  np->tickets = proc->tickets;
+/*
+add file end
+*/
+
   *np->tf = *proc->tf;
 
-  // ysq rxk, give child same ticket as parents
-  set_tickets(np, proc->tickets);
+
+  
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -220,8 +215,6 @@ void exit(void)
         wakeup1(initproc);
     }
   }
-  // ysq rxk, make it gone from tickets
-  set_tickets(proc, 0);
 
   // Jump into the scheduler, never to return.
   proc->state = ZOMBIE;
@@ -258,10 +251,6 @@ int wait(void)
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
-
-        // ysq rxk set everything to 0, including tickets
-        p->ticks = 0;
-        set_tickets(p, 0);
         
         release(&ptable.lock);
         return pid;
@@ -290,62 +279,46 @@ int wait(void)
 void scheduler(void)
 {
   struct proc *p;
-  /*
-    added code, initial scheduler with initial tickets 1 as per instruction
-    ysq&rxk
-  */
-  acquire(&ptable.lock);
-  total_tickets = set_tickets(ptable.proc, 1);
-  release(&ptable.lock);
-  int count; // used for how many processes executed
-  //int start_bit;
-
-  cprintf("total ticket is %d \n", total_tickets);
-
   for (;;)
   {
     // Enable interrupts on this processor.
     sti();
-
+    uint total_tickets =0;
+    uint count=0; // used for how many processes executed
     /*
       ysq rxk, implementing lottery system. first give a winner
     */
-    int winner = rand(total_tickets);
-    if(winner ==0){
-      winner =1;
-    }
-    count = 0;
-    //cprintf("winner is %d \n", winner);
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
     for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     {
-      if (p->state != RUNNABLE)
+      if (p->state == RUNNABLE)
       {
         /*
            ysq rxk added, count up tickets
         */
-#ifndef valid_proc
-        count += p->tickets;
-#endif
+        total_tickets += p->tickets;
 
-        continue;
       }
+    }
       /*
           ysq rxk added, check if ticket reaches winner, if yes, execute winner, else, continue
-      */
+      */  
+      uint winner = random_at_most(total_tickets);
+      for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+      {
+      if(p->state != RUNNABLE){
+        continue;
+      }
       count += p->tickets;
-      cprintf("count is %d \n", count);
       if (count < winner)
       {
         continue;
       }
-      if (count > total_tickets)
-      {
-        panic("Process exceeding schedule. \n");
-      }
-      
+      /*
+          add file end
+      */  
 
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
@@ -353,24 +326,35 @@ void scheduler(void)
       proc = p;
       switchuvm(p);
       p->state = RUNNING;
+
       /*
         ysq rxk added, record running state
       */
-      //start_bit = 1;
-      // need system call implement recording start bits
+
       p->inuse = 1;
       int start_bit = ticks;
-
+            /*
+          add file end
+      */  
 
       swtch(&cpu->scheduler, proc->context);
+
+      /*
+        ysq rxk added, building up offset
+      */
       // building up offset
       p->ticks += ticks - start_bit;
+      // end of added code 
+
+
 
       switchkvm();
 
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       proc = 0;
+
+
       // added ysq rxk, dunno why added break, but cant run without it, will keep exceeding limit 
       break;
     }
@@ -446,9 +430,9 @@ void sleep(void *chan, struct spinlock *lk)
   /*
     ysq rxk added, we need to check if it is valid when putting it to sleep
   */
-  #ifdef valid_bit
-  store_tickets(proc);
-  #endif
+  // update: no need to do so, global ptable already do that for us
+  //store_tickets(proc);
+
 
 
 
@@ -474,12 +458,6 @@ wakeup1(void *chan)
 
   for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if (p->state == SLEEPING && p->chan == chan)
-
-      // ysq rxk add
-      #ifdef valid_bit
-      get_tickets(p);
-      #endif
-
       p->state = RUNNABLE;
 
 }
@@ -507,11 +485,6 @@ int kill(int pid)
       p->killed = 1;
       // Wake process from sleep if necessary.
       if (p->state == SLEEPING)
-        //added ysq rxk
-        #ifdef valid_bit
-        get_tickets(p);
-        #endif
-
         p->state = RUNNABLE;
 
       release(&ptable.lock);

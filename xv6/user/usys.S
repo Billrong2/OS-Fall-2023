@@ -29,5 +29,10 @@ SYSCALL(getpid)
 SYSCALL(sbrk)
 SYSCALL(sleep)
 SYSCALL(uptime)
+/*
+
+ added by ysq rxk
+*/
+
 SYSCALL(settickets)
 SYSCALL(getpinfo)

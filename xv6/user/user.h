@@ -28,11 +28,11 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 /*
-    added
+    added ysq rxk
 */
 int settickets(int);
 int getpinfo(struct pstat *);
-
+// end of added code 
 
 // user library functions (ulib.c)
 int stat(char*, struct stat*);

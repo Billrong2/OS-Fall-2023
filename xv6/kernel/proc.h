@@ -81,28 +81,24 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
   
-  //added by rxk and ysq
+  /*added by rxk and ysq*/
   int tickets;
   int inuse;
   int ticks;
-
+  //end of added code 
 };
 
-//added by ysq rxk
+/*added by ysq rxk
 
 
-int get_total_tickets();
 // adding this from proc.c (dunno why direct copy doesnt work), make it accessible to USER
-
-struct ptable
+//void setp_tickets(struct proc *p, int n);*/
+struct ptable_global
 {
   struct spinlock lock;
   struct proc proc[NPROC];
-} ;
-// Process memory is laid out contiguously, low addresses first:
-//   text
-//   original data and bss
-//   fixed-size stack
-//   expandable heap
+};
+extern struct ptable_global ptable;
 
+// end of added code 
 #endif // _PROC_H_

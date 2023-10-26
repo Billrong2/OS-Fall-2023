@@ -6,9 +6,73 @@
 #include "proc.h"
 #include "sysfunc.h"
 #include "pstat.h"
-#include "get_tickets.h"
 #include "spinlock.h"
 
+
+/*
+   added by rxk ysq
+    body of settickets and body of getpinfo
+    use argint and argptr go alloc ptable, set to ptable or return it to struct pstat
+*/
+//struct ptable_global ptable;
+int
+sys_settickets(void)
+{
+  int tickets;
+  if(argint(0, &tickets) < 0)
+  {
+    return -1;
+  }
+//update:
+if(tickets<=0)
+  {
+  return -1;
+  }
+    //update: wrong way of setting tickets
+    //passing arg into the link list is file
+  proc->tickets = tickets;
+  return 0;
+}
+
+int
+sys_getpinfo(void)
+{
+  struct pstat* pp;
+  struct proc* p;
+    // if(argptr(0, (void*)&fd, 2*sizeof(fd[0])) < 0)
+    // return -1;
+  // if(argptr(0,(void*)&pp,sizeof(&pp)) <0){
+  //   return -1;
+  // }
+  acquire(&ptable.lock);
+  if(argptr(0, (void*)&pp, sizeof(pp))<0)
+  {
+    //**** IMPORTANT, no release next getpinfo will have error
+    release(&ptable.lock);
+    return -1;
+  }
+  if(pp == NULL){
+    //panic("PP's gone!\n");
+    //**** IMPORTANT, no release next getpinfo will have error
+    release(&ptable.lock);
+    return -1;
+   //cprintf("There is no current processes, returning");
+  }
+  
+  // set_tickets(ptable.proc, total_ticket);
+  //loop over all proc
+  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    int i = p - ptable.proc;
+    if(p->state != UNUSED){
+      pp->pid[i] = p->pid;
+      pp->ticks[i] = p->ticks;
+      pp->tickets[i] = p->tickets;
+      pp->inuse[i] = p->inuse;
+    }
+  }
+  release(&ptable.lock);
+  return 0;
+}
 
 
 int
@@ -93,57 +157,4 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
-struct
-{
-  struct spinlock lock;
-  struct proc proc[NPROC];
-} ptable;
 
-
-int
-sys_settickets(void)
-{
-  int total_ticket = 0;
-  // int pid;
-
-  // if(argint(0, &pid) < 0)
-  //   return -1;
-  // return kill(pid);
-  if(argint(0, &total_ticket) < 0){
-    return -1;
-  }
-  acquire(&ptable.lock);
-  set_tickets(ptable.proc, total_ticket);
-  release(&ptable.lock);
-  return 0;
-}
-
-int
-sys_getpinfo(void)
-{
-  struct pstat* pp;
-  struct proc* p;
-    // if(argptr(0, (void*)&fd, 2*sizeof(fd[0])) < 0)
-    // return -1;
-  // if(argptr(0,(void*)&pp,sizeof(&pp)) <0){
-  //   return -1;
-  // }
-  argptr(0, (void*)&pp, sizeof(pp));
-  if(pp == NULL){
-    panic("PP's gone!\n");
-  }
-  acquire(&ptable.lock);
-  // set_tickets(ptable.proc, total_ticket);
-  //loop over all proc
-  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    int i = p - ptable.proc;
-    if(p->state != UNUSED){
-      pp->pid[i] = p->pid;
-      pp->ticks[i] = p->ticks;
-      pp->tickets[i] = p->tickets;
-      pp->inuse[i] = p->inuse;
-    }
-  }
-  release(&ptable.lock);
-  return 0;
-}

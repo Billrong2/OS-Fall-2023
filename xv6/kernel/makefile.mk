@@ -28,8 +28,6 @@ KERNEL_OBJECTS := \
 	uart.o\
 	vectors.o\
 	vm.o\
-	random_num.o\
-	get_tickets.o\
 
 KERNEL_OBJECTS := $(addprefix kernel/, $(KERNEL_OBJECTS))
 
