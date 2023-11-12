@@ -36,17 +36,19 @@ struct student{
     int helped_time;
     int priority;
     int arriving_order;
+    int student_queue;
 };
 // structure to represent tutor info
 struct tutor{
     int ID;
     int next_target;
-};
-struct queue{
     int tutor_queue;
-    int student_queue;
-    int chair_queue;
 };
+// struct queue{
+//     int tutor_queue;
+//     int student_queue;
+//     int chair_queue;
+// };
 
 // entering main method
 int main(int argc, const char *argv[]){
@@ -73,6 +75,12 @@ int main(int argc, const char *argv[]){
         students[i].arriving_order = -1;
         students[i].priority = -1;
         students[i].helped_time = -1;
+        students[i].student_queue = -1;
     }
+    for (i =0; i< tutor_total; i++){
+        tutors[i].tutor_queue = -1;
+        tutors[i].next_target = -1;
+    }
+    
     return 0;
 }
