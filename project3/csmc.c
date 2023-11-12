@@ -1,3 +1,4 @@
+// libraries
 #include <stdio.h>
 #include <assert.h>
 #include <unistd.h>
@@ -9,10 +10,62 @@
 // define max number of students
 const int max_student_number = 2000;
 
-
+// defining thread global variables.
+int chair_total = 0; // one of the input argc
+int help_need_total = 0; // one of the input argc
+int tutor_total = 0; // one of the input argc
+int student_total = 0; // one of the input argc
+// process overview
 int tutoring_finished=0;
 int chair_unused = 0;
 int tutoring_on_going =0;
-int chair_num = 0;
 int tutor_aviliable = 0;
-int visited_num = 0;
+int visited_num = 0; 
+// lock and thread variable
+sem_t student_sem;
+sem_t tutor_sem;
+sem_t seat_sem;
+sem_t coordinator_sem;
+pthread_mutex_t chair_lock;
+pthread_mutex_t tutor_lock;
+pthread_mutex_t student_lock;
+// structure to represent student
+struct student{
+    int ID;
+    int helped_time;
+    int priority;
+    int arriving_order;
+};
+struct tutor{
+    int ID;
+    int next_target;
+};
+
+
+
+
+
+// entering main method
+int main(int argc, const char *argv[]){
+
+    int student_total = atoi(argv[1]);
+    int tutor_total = atoi(argv[2]);
+    int chair_total = atoi(argv[3]);
+    int help_need_total = atoi(argv[4]);
+    int i = 0;
+    for(i =0; i< argc; i++){
+        if(atoi(argv[i]) >= max_student_number){
+            printf("Invalid Input: Index Out of Bound!\n exiting program");
+            return 1;
+        }
+    }
+    if (argc!= 5){
+        printf("Not enough input \n");
+        return 1;
+    }
+    printf("hello world%d %d %d %d %d", max_student_number, student_total, tutor_total, chair_total, help_need_total);
+    return 0;
+    struct student *students = (struct student *)malloc(student_total * sizeof(struct student));
+    struct tutor *tutors = (struct tutor *)malloc(tutor_total * sizeof(struct tutor));
+    
+}
