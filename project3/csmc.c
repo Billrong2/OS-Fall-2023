@@ -29,21 +29,24 @@ sem_t coordinator_sem;
 pthread_mutex_t chair_lock;
 pthread_mutex_t tutor_lock;
 pthread_mutex_t student_lock;
-// structure to represent student
+pthread_mutex_t queue_lock;
+// structure to represent student info
 struct student{
     int ID;
     int helped_time;
     int priority;
     int arriving_order;
 };
+// structure to represent tutor info
 struct tutor{
     int ID;
     int next_target;
 };
-
-
-
-
+struct queue{
+    int tutor_queue;
+    int student_queue;
+    int chair_queue;
+};
 
 // entering main method
 int main(int argc, const char *argv[]){
@@ -57,15 +60,19 @@ int main(int argc, const char *argv[]){
         if(atoi(argv[i]) >= max_student_number){
             printf("Invalid Input: Index Out of Bound!\n exiting program");
             return 1;
-        }
+        } 
     }
     if (argc!= 5){
         printf("Not enough input \n");
         return 1;
     }
     printf("hello world%d %d %d %d %d", max_student_number, student_total, tutor_total, chair_total, help_need_total);
-    return 0;
     struct student *students = (struct student *)malloc(student_total * sizeof(struct student));
     struct tutor *tutors = (struct tutor *)malloc(tutor_total * sizeof(struct tutor));
-    
+    for (i = 0; i < student_total; i++){
+        students[i].arriving_order = -1;
+        students[i].priority = -1;
+        students[i].helped_time = -1;
+    }
+    return 0;
 }
