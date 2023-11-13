@@ -42,6 +42,7 @@ struct csmc_info
 {
     struct student *students;
     struct tutor *tutors;
+    struct chair *queues;
 };
 struct student
 {
@@ -50,6 +51,11 @@ struct student
     int priority;
     int arriving_order;
     int student_queue;
+};
+struct chair{
+    int student_queue;
+    int tutor_queue;
+    int arriving_order;
 };
 // structure to represent tutor info
 struct tutor
@@ -134,8 +140,41 @@ void *thread_function_student(void *thread_info)
     // sem_post(&semaphore);
     // pthread_exit(NULL);
 }
-void *thread_function_tutor(void *threadID)
+void *thread_function_tutor(void *thread_info)
 {
+    int i = 0;
+    int serving_student_num = 0;
+    struct csmc_info *csmcs = (struct csmc_info *)thread_info;
+    while(student_finished < student_total){
+        sem_wait(&coordinator_sem);
+        pthread_mutex_lock(&chair_lock);
+        for(i = 0; i<student_total; i ++){
+            if(csmcs->students[serving_student_num].priority<= csmcs->students[i].priority){
+                if(csmcs->students[serving_student_num].priority == csmcs->students[i].priority){
+                    if(csmcs->students[serving_student_num].arriving_order < csmcs->students[i].arriving_order){
+                        serving_student_num = i;
+                    }
+                }
+                serving_student_num = i;
+            }
+        }
+        pthread_mutex_unlock(&chair_lock);
+        chair_unused++;
+        tutoring_on_going++;
+        tutor_aviliable--;
+        //tutoring
+        thread_sleep();
+        pthread_mutex_lock(&chair_lock);
+        tutoring_on_going--;
+        tutor_aviliable++;
+        printf("T: Student %d tutored by Tutor %d. Students tutored now = %d", csmcs->students[serving_student_num].ID , csmcs->tutors->ID, (tutor_total-tutor_aviliable));
+        pthread_mutex_unlock(&chair_lock);
+        pthread_mutex_lock(&tutor_lock);
+        csmcs->tutors->tutor_queue = 0;
+        pthread_mutex_unlock(&tutor_lock);
+    }
+    printf("Tutor thread terminated %d", csmcs->tutors->ID);
+    pthread_exit(NULL);
     // long tid = (long)threadID;
     //  sem_wait(&semaphore);
     //  sem_post(&semaphore);
@@ -199,6 +238,7 @@ int main(int argc, const char *argv[])
     struct csmc_info *csmcs = (struct csmc_info *)malloc(sizeof(struct csmc_info));
     csmcs->students = (struct student *)malloc(student_total * sizeof(struct student));
     csmcs->tutors = (struct tutor *)malloc(tutor_total * sizeof(struct tutor));
+    csmcs->queues = (struct chair *)malloc(chair_total * sizeof(struct chair));
     // struct csmc_info *csmcs = {*students, *tutors};
     for (i = 0; i < student_total; i++)
     {
