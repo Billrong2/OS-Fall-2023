@@ -30,4 +30,8 @@ new scheduler done
 大方向性錯誤，重啟項目
 ### 10/21
 demo done, need testing and pp fix and add name
+## Project3
+### 11.11 start project 3
+### 11/12 Data Type, struct table, passing args, progress on Student thread
+
 
