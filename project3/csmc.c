@@ -175,17 +175,18 @@ void *thread_function_tutor(void *thread_info)
     }
     printf("Tutor thread terminated %d", csmcs->tutors->ID);
     pthread_exit(NULL);
-    // long tid = (long)threadID;
-    //  sem_wait(&semaphore);
-    //  sem_post(&semaphore);
-    //  pthread_exit(NULL);
 }
-void *thread_function_chair(void *threadID)
+void *thread_function_chair(void *thread_info)
 {
-    // long tid = (long)threadID;
-    //  sem_wait(&semaphore);
-    //  sem_post(&semaphore);
-    //  pthread_exit(NULL);
+    struct csmc_info *csmcs = (struct csmc_info *) thread_info;
+    int i = 0;
+    sem_wait(&student_sem);
+    pthread_mutex_lock(&chair_lock);
+    for 
+    {
+
+    }
+
 }
 
 void t_init(struct csmc_info *arg)
