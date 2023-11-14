@@ -182,9 +182,11 @@ void *thread_function_chair(void *thread_info)
     int i = 0;
     sem_wait(&student_sem);
     pthread_mutex_lock(&chair_lock);
-    for 
+    for (i =0; i<student_total;i++)
     {
-
+        if(csmcs->students[i].student_queue == 1){
+            printf("C: Student %d with priority %d")
+        }
     }
 
 }
