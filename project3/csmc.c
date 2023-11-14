@@ -8,12 +8,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
-
-#define NDEBUG ;
-
 // define max number of students
 const int max_student_number = 2000;
-
 // defining thread global variables.
 int chair_total = 0;     // one of the input argc
 int help_need_total = 0; // one of the input argc
@@ -26,13 +22,11 @@ int chair_unused = 0;
 int tutoring_on_going = 0;
 int tutor_aviliable = 0;
 int visited_num = 0;
-
 // lock and thread variable
 sem_t student_sem;
 sem_t tutor_sem;
 sem_t seat_sem;
 sem_t coordinator_sem;
-
 pthread_mutex_t chair_lock;
 pthread_mutex_t tutor_lock;
 pthread_mutex_t student_lock;
@@ -56,6 +50,7 @@ struct chair{
     int student_queue;
     int tutor_queue;
     int arriving_order;
+    int is_empty;
 };
 // structure to represent tutor info
 struct tutor
@@ -185,7 +180,7 @@ void *thread_function_chair(void *thread_info)
     for (i =0; i<student_total;i++)
     {
         if(csmcs->students[i].student_queue == 1){
-            printf("C: Student %d with priority %d")
+            printf("C: Student %d with priority %d");
         }
     }
 
@@ -218,7 +213,6 @@ void t_init(struct csmc_info *arg)
 }
 int main(int argc, const char *argv[])
 {
-
     int student_total = atoi(argv[1]);
     int tutor_total = atoi(argv[2]);
     int chair_total = atoi(argv[3]);
@@ -254,6 +248,11 @@ int main(int argc, const char *argv[])
     {
         csmcs->tutors[i].tutor_queue = -1;
         csmcs->tutors[i].next_target = -1;
+    }
+    for (i = 0; i< chair_total;i++){
+        csmcs->queues[i].student_queue = -1;
+        csmcs->queues[i].arriving_order = i;
+        csmcs->queues[i].is_empty = -1;
     }
     init();
     t_init(csmcs);
