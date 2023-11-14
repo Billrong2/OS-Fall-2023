@@ -22,6 +22,7 @@ int chair_unused = 0;
 int tutoring_on_going = 0;
 int tutor_aviliable = 0;
 int visited_num = 0;
+int total_request =0;
 // lock and thread variable
 sem_t student_sem;
 sem_t tutor_sem;
@@ -129,11 +130,6 @@ void *thread_function_student(void *thread_info)
             pthread_exit(NULL);
         }
     }
-    // if thread escaped from while loop, student get enough help from tutoring.
-
-    // sem_wait(&semaphore);
-    // sem_post(&semaphore);
-    // pthread_exit(NULL);
 }
 void *thread_function_tutor(void *thread_info)
 {
@@ -180,7 +176,7 @@ void *thread_function_chair(void *thread_info)
     for (i =0; i<student_total;i++)
     {
         if(csmcs->students[i].student_queue == 1){
-            printf("C: Student %d with priority %d");
+            printf("C: Student %d with priority %d added to the queue. Waiting students now = %d. Total request = %d.", csmcs->students->ID, csmcs->students->priority,chair_total - chair_unused, total_request);
         }
     }
 
@@ -190,26 +186,28 @@ void t_init(struct csmc_info *arg)
 {
     pthread_t p_student[student_total];
     pthread_t p_tutor[tutor_total];
-    int i = 0, id_count = 1;
+    int i = 0;
     pthread_t p_coordinator;
     struct csmc_info *csmcs = (struct csmc_info *)arg;
     pthread_create(&p_coordinator, NULL, thread_function_chair, NULL);
-    pthread_join(p_coordinator, NULL);
     for (i = 0; i < student_total; i++)
     {
-        csmcs->students[i].ID = id_count;
-        id_count++;
-        pthread_create(&p_student[i], NULL, thread_function_student, (void *)(&csmcs));
-        pthread_join(p_student[i], NULL);
+        csmcs->students[i].ID = i;
+        pthread_create(&p_student[i], NULL, thread_function_student, (void *)(&csmcs->students[i]));
     }
-    id_count = 1;
     for (i = 0; i < tutor_total; i++)
     {
-        csmcs->tutors[i].ID = id_count;
-        id_count++;
-        pthread_create(&p_tutor[i], NULL, thread_function_tutor, (void *)(&csmcs));
-        pthread_join(p_tutor[i], NULL);
+        csmcs->tutors[i].ID = i;
+        pthread_create(&p_tutor[i], NULL, thread_function_tutor, (void *)(&csmcs->tutors[i]));   
     }
+    pthread_join(p_coordinator, NULL);
+    for(i =0;i<student_total;i++){
+        pthread_join(p_student[i], NULL);
+    }
+    for(i =0;i<student_total;i++){
+        pthread_join(p_tutor[i],NULL);
+    }
+    return 0;
 }
 int main(int argc, const char *argv[])
 {
