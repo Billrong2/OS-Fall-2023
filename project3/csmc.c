@@ -63,7 +63,7 @@ struct tutor
     int tutor_queue;
 };
 // make our csmcs global struct
-struct csmc_info *csmcs;
+struct csmc_info csmcs;
 void thread_sleep()
 { // half chatgpt
     srand((unsigned int)time(NULL));
@@ -72,22 +72,21 @@ void thread_sleep()
     // Simulate thread behavior by sleeping
     usleep(sleepTime);
 }
-void init()
-{
-    // init all sem
-    sem_init(&student_sem, 0, 0);
-    sem_init(&tutor_sem, 0, 0);
-    sem_init(&seat_sem, 0, 0);
-    sem_init(&coordinator_sem, 0, 0);
-
-    pthread_mutex_init(&chair_lock, NULL);
-    pthread_mutex_init(&tutor_lock, NULL);
-    pthread_mutex_init(&student_lock, NULL);
-    pthread_mutex_init(&queue_lock, NULL);
-    // pthread_t p_student[student_total];
-    // pthread_t p_tutor[tutor_total];
-    // pthread_t p_chair[chair_total];
-}
+// void init()
+// {
+//     // init all sem
+//     sem_init(&student_sem, 0, 0);
+//     sem_init(&tutor_sem, 0, 0);
+//     sem_init(&seat_sem, 0, 0);
+//     sem_init(&coordinator_sem, 0, 0);
+//     pthread_mutex_init(&chair_lock, NULL);
+//     pthread_mutex_init(&tutor_lock, NULL);
+//     pthread_mutex_init(&student_lock, NULL);
+//     pthread_mutex_init(&queue_lock, NULL);
+//     // pthread_t p_student[student_total];
+//     // pthread_t p_tutor[tutor_total];
+//     // pthread_t p_chair[chair_total];
+// }
 void *thread_function_student(void *thread_info)
 {
     struct student *students = (struct student *)thread_info;
@@ -121,8 +120,8 @@ void *thread_function_student(void *thread_info)
                 students->student_queue = -1;
                 pthread_mutex_unlock(&queue_lock);
                 pthread_mutex_lock(&student_lock);
-                csmcs->students->helped_time++;
-                csmcs->students->priority++;
+                csmcs.students->helped_time++;
+                csmcs.students->priority++;
                 pthread_mutex_unlock(&student_lock);
             }
         }
@@ -148,11 +147,11 @@ void *thread_function_tutor(void *thread_info)
         pthread_mutex_lock(&chair_lock);
         for (i = 0; i < student_total; ++i)
         {
-            if (csmcs->students[i].priority != -1 && csmcs->students[i].priority <= highest_priority && csmcs->students[i].arriving_order <= fcfs)
+            if (csmcs.students[i].priority != -1 && csmcs.students[i].priority <= highest_priority && csmcs.students[i].arriving_order <= fcfs)
             {
-                highest_priority = csmcs->students[i].priority;
+                highest_priority = csmcs.students[i].priority;
                 student_index = i;
-                fcfs = csmcs->students[i].arriving_order;
+                fcfs = csmcs.students[i].arriving_order;
             }
             else
             {
@@ -160,16 +159,16 @@ void *thread_function_tutor(void *thread_info)
                 ;
             }
         }
-        csmcs->students[i].arriving_order = -1;
-        csmcs->students[i].priority = -1;
+        csmcs.students[i].arriving_order = -1;
+        csmcs.students[i].priority = -1;
         chair_unused++;
         tutoring_on_going++;
         pthread_mutex_unlock(&chair_lock);
         thread_sleep();
         tutoring_on_going--;
-        printf("T: Student %d tutored by Tutor %d. Students tutored now = %d", csmcs->students[serving_student_num].ID, csmcs->tutors->ID, (tutor_total - tutor_aviliable));
+        printf("T: Student %d tutored by Tutor %d. Students tutored now = %d", csmcs.students[serving_student_num].ID, csmcs.tutors->ID, (tutor_total - tutor_aviliable));
         pthread_mutex_lock(&queue_lock);
-        csmcs->students[student_index].student_queue = tutors->ID;
+        csmcs.students[student_index].student_queue = tutors->ID;
     }
 
     pthread_exit(NULL);
@@ -179,15 +178,13 @@ void *thread_function_chair(void *arg)
 
     while (student_finished < student_total)
     {
-        // if(csmcs->students[i].student_queue == 1){
-        //     printf("C: Student %d with priority %d added to the queue. Waiting students now = %d. Total request = %d.", csmcs->students->ID, csmcs->students->priority,chair_total - chair_unused, total_request);
-        // }
+
         sem_wait(&student_sem);
         int i = 0;//, serving_student_num = 0, highest_priority = help_need_total, student_index = -1, fcfs = student_total * help_need_total;
         pthread_mutex_lock(&chair_lock);
         for (i = 0; i < student_total; i++)
         {
-            printf("C: Student %d with priority %d added to the queue. Waiting students now = %d. Total requests = %d ", csmcs->students[i].ID, csmcs->students[i].priority, chair_total - chair_unused, total_request);
+            printf("C: Student %d with priority %d added to the queue. Waiting students now = %d. Total requests = %d ", csmcs.students[i].ID, csmcs.students[i].priority, chair_total - chair_unused, total_request);
         }
     }
     int i;
@@ -197,45 +194,46 @@ void *thread_function_chair(void *arg)
     }
     pthread_exit(NULL);
 }
-void t_init()
-{
-    pthread_t p_student[student_total];
-    pthread_t p_tutor[tutor_total];
-    pthread_t p_coordinator;
-    int i = 0;
-    pthread_create(&p_coordinator, NULL, thread_function_chair, NULL);
-    for (i = 0; i < student_total; i++)
-    {
-        csmcs->students[i].arriving_order = -1;
-        csmcs->students[i].priority = 0;
-        csmcs->students[i].helped_time = 0;
-        csmcs->students[i].student_queue = -1;
-        csmcs->students[i].ID = i;
-        pthread_create(&p_student[i], NULL, thread_function_student, (void *)(&csmcs->students[i]));
-    }
-    for (i = 0; i < tutor_total; i++)
-    {
-        csmcs->tutors[i].tutor_queue = -1;
-        csmcs->tutors[i].next_target = -1;
-        csmcs->tutors[i].ID = i;
-        pthread_create(&p_tutor[i], NULL, thread_function_tutor, (void *)(&csmcs->tutors[i]));
-    }
-    for (i = 0; i < chair_total; i++)
-    {
-        csmcs->queues[i].student_queue = -1;
-        csmcs->queues[i].arriving_order = -1;
-        csmcs->queues[i].is_empty = -1;
-    }
-    pthread_join(p_coordinator, NULL);
-    for (i = 0; i < student_total; i++)
-    {
-        pthread_join(p_student[i], NULL);
-    }
-    for (i = 0; i < tutor_total; i++)
-    {
-        pthread_join(p_tutor[i], NULL);
-    }
-}
+// void t_init()
+// {
+//     pthread_t p_student[student_total];
+//     pthread_t p_tutor[tutor_total];
+//     pthread_t p_coordinator;
+//     int i = 0;
+//     pthread_create(&p_coordinator, NULL, thread_function_chair, NULL);
+//     for (i = 0; i < student_total; i++)
+//     {
+//         csmcs.students[i].arriving_order = -1;
+//         csmcs.students[i].priority = 0;
+//         csmcs.students[i].helped_time = 0;
+//         csmcs.students[i].student_queue = -1;
+//         csmcs.students[i].ID = i;
+//         printf("%d",csmcs.students[i].ID);
+//         pthread_create(&p_student[i], NULL, thread_function_student, (void *)(&csmcs.students[i]));
+//     }
+//     for (i = 0; i < tutor_total; i++)
+//     {
+//         csmcs.tutors[i].tutor_queue = -1;
+//         csmcs.tutors[i].next_target = -1;
+//         csmcs.tutors[i].ID = i;
+//         pthread_create(&p_tutor[i], NULL, thread_function_tutor, (void *)(&csmcs.tutors[i]));
+//     }
+//     for (i = 0; i < chair_total; i++)
+//     {
+//         csmcs.queues[i].student_queue = -1;
+//         csmcs.queues[i].arriving_order = -1;
+//         csmcs.queues[i].is_empty = -1;
+//     }
+//     pthread_join(p_coordinator, NULL);
+//     for (i = 0; i < student_total; i++)
+//     {
+//         pthread_join(p_student[i], NULL);
+//     }
+//     for (i = 0; i < tutor_total; i++)
+//     {
+//         pthread_join(p_tutor[i], NULL);
+//     }
+// }
 int main(int argc, const char *argv[])
 {
     int student_total = atoi(argv[1]);
@@ -258,10 +256,52 @@ int main(int argc, const char *argv[])
         return 1;
     }
     printf("hello world%d %d %d %d %d", max_student_number, student_total, tutor_total, chair_total, help_need_total);
-    csmcs->students = (struct student *)malloc(student_total * sizeof(struct student));
-    csmcs->tutors = (struct tutor *)malloc(tutor_total * sizeof(struct tutor));
-    csmcs->queues = (struct chair *)malloc(chair_total * sizeof(struct chair));
-    init();   // init sem, lock
-    t_init(); // init thread, post every thread
+    csmcs.students = (struct student *)malloc(student_total * sizeof(struct student));
+    csmcs.tutors = (struct tutor *)malloc(tutor_total * sizeof(struct tutor));
+    csmcs.queues = (struct chair *)malloc(chair_total * sizeof(struct chair));
+    sem_init(&student_sem, 0, 0);
+    sem_init(&tutor_sem, 0, 0);
+    sem_init(&seat_sem, 0, 0);
+    sem_init(&coordinator_sem, 0, 0);
+    pthread_mutex_init(&chair_lock, NULL);
+    pthread_mutex_init(&tutor_lock, NULL);
+    pthread_mutex_init(&student_lock, NULL);
+    pthread_mutex_init(&queue_lock, NULL);
+    pthread_t p_student[student_total];
+    pthread_t p_tutor[tutor_total];
+    pthread_t p_coordinator;
+    pthread_create(&p_coordinator, NULL, thread_function_chair, NULL);
+    for (i = 0; i < student_total; i++)
+    {
+        csmcs.students[i].arriving_order = -1;
+        csmcs.students[i].priority = 0;
+        csmcs.students[i].helped_time = 0;
+        csmcs.students[i].student_queue = -1;
+        csmcs.students[i].ID = i;
+        //printf("%d",csmcs.students[i].ID);
+        pthread_create(&p_student[i], NULL, thread_function_student, (void *)(&csmcs.students[i]));
+    }
+    for (i = 0; i < tutor_total; i++)
+    {
+        csmcs.tutors[i].tutor_queue = -1;
+        csmcs.tutors[i].next_target = -1;
+        csmcs.tutors[i].ID = i;
+        pthread_create(&p_tutor[i], NULL, thread_function_tutor, (void *)(&csmcs.tutors[i]));
+    }
+    for (i = 0; i < chair_total; i++)
+    {
+        csmcs.queues[i].student_queue = -1;
+        csmcs.queues[i].arriving_order = -1;
+        csmcs.queues[i].is_empty = -1;
+    }
+    pthread_join(p_coordinator, NULL);
+    for (i = 0; i < student_total; i++)
+    {
+        pthread_join(p_student[i], NULL);
+    }
+    for (i = 0; i < tutor_total; i++)
+    {
+        pthread_join(p_tutor[i], NULL);
+    }
     return 0;
 }
