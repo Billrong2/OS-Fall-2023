@@ -32,6 +32,12 @@ new scheduler done
 demo done, need testing and pp fix and add name
 ## Project3
 ### 11.11 start project 3
-### 11/12 Data Type, struct table, passing args, progress on Student thread
+
+### 11/12
+Data Type, struct table, passing args, progress on Student thread
+### 11/13
+Minor adjustment
+### 11/14 
+Debugging, IDs adjustment
 
 
