@@ -28,7 +28,6 @@ int tutoringNow=0;
 void *student_thread(void *student_id);
 void *tutor_thread(void *tutor_id);
 void *coordinator_thread();
-//void *coordinator_thread(void *);
 
 int student_num=0;
 int tutor_num=0;
