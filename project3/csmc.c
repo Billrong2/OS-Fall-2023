@@ -90,7 +90,7 @@ void *thread_function_student(void *thread_info)
             total_request++;
             students->arriving_order = total_request;
             chair_unused--;
-            csmcs.queues[students->ID].student_queue = 2;
+            csmcs.queues[students->ID].student_queue = total_request;
             printf("S: Student %d takes a seat. Empty chair = %d.\n", students->ID, chair_unused);
             
             pthread_mutex_unlock(&student_lock);
@@ -101,19 +101,10 @@ void *thread_function_student(void *thread_info)
             tutor_aviliable--;
             pthread_mutex_lock(&tutor_lock);
             students->student_queue = -1;
-            pthread_mutex_unlock(&tutor_lock);
-
-            pthread_mutex_lock(&student_lock);
             students->helped_time +=1;
-            pthread_mutex_unlock(&student_lock);
+            pthread_mutex_unlock(&tutor_lock);
+            thread_sleep();
         }
-        // if (students->helped_time >= help_need_total)
-        // {
-        //     pthread_mutex_lock(&student_lock);
-        //     student_finished++;
-        //     pthread_mutex_unlock(&student_lock);
-
-        // }
     }
     pthread_mutex_lock(&student_lock);
     student_finished++;
@@ -123,12 +114,12 @@ void *thread_function_student(void *thread_info)
 }
 void *thread_function_tutor(void *thread_info)
 {
+    struct tutor *tutors = (struct tutor *)thread_info;
+    printf("%d\n",tutors->ID);
     while (student_finished < student_total)
     {
-        
-        
         int i = 0, highest_priority = help_need_total, student_index = -1, fcfs = student_total * help_need_total;
-        struct tutor *tutors = (struct tutor *)thread_info;
+        
         sem_wait(&coordinator_sem);
         
         pthread_mutex_lock(&student_lock);
@@ -159,10 +150,11 @@ void *thread_function_tutor(void *thread_info)
         pthread_mutex_lock(&student_lock);
         tutoring_on_going--;
         total_session++;
-        printf("T: Student %d tutored by Tutor %d. Students tutored now = %d. Total sessions tutored = %d\n", csmcs.students[student_index].ID, csmcs.students[student_index].student_queue, (tutor_total - tutor_aviliable), total_session);
+        printf("T: Student %d tutored by Tutor %d. Students tutored now = %d. Total sessions tutored = %d\n", csmcs.students[student_index].ID, tutors->ID, (tutor_total - tutor_aviliable), total_session);
         pthread_mutex_unlock(&student_lock);
+
         pthread_mutex_lock(&tutor_lock);
-        csmcs.students[student_index].student_queue = tutors->ID;
+        csmcs.students[student_index].student_queue = -1;
         pthread_mutex_unlock(&tutor_lock);
     }
 
