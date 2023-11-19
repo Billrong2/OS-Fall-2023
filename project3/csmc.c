@@ -22,6 +22,7 @@ int help_need_total; // one of the input argc
 int tutor_total;     // one of the input argc
 int student_total;   // one of the input argc
 int tutor_aviliable;
+int *global_tutor_ID;
 
 // lock and thread variable
 
@@ -66,17 +67,18 @@ void thread_sleep()
 { // half chatgpt
     srand((unsigned int)time(NULL));
     // Generate a random sleep time between 0 and 2000 microseconds (2 milliseconds)
-    int sleepTime = rand() % 2001;
+    float sleepTime = rand() % 2001;
     // Simulate thread behavior by sleeping
     usleep(sleepTime);
 }
 void *thread_function_student(void *thread_info)
 {
     struct student *students = (struct student *)thread_info;
-
+    int student_ID = students->ID; // student ID keep changing in struct, dont know why
     while (1)
     {
         if(students->helped_time >= help_need_total){
+            printf("student %d term\n", students->ID  );
             break;
         }
         thread_sleep();
@@ -91,15 +93,16 @@ void *thread_function_student(void *thread_info)
         else if(chair_unused >0)
         { // if there are chairs aviliable
             
-            total_request++;
             //students->arriving_order = total_request;
             chair_unused--;
-            csmcs.queues[students->ID].student_queue = total_request;
+            total_request++;
+            csmcs.queues[student_ID].student_queue = total_request;
             printf("S: Student %d takes a seat. Empty chair = %d.\n", students->ID, chair_unused);
+            
             pthread_mutex_unlock(&student_lock);
-            sem_post(&student_sem);
-            sem_wait(&tutor_sem);
-            printf("S: Student %d received help from Tutor %d.\n", students->ID, csmcs.students[students->ID].student_queue+1);
+            sem_post(&student_sem);// student seated, notify coordinator
+            sem_wait(&tutor_sem); // as student remain seated, wait for tutor come to pick up that student
+            printf("S: Student %d received help from Tutor %d.\n", student_ID, global_tutor_ID[student_ID]);
             pthread_mutex_lock(&tutor_lock);
             students->student_queue = -1;
             students->helped_time +=1;
@@ -110,6 +113,8 @@ void *thread_function_student(void *thread_info)
     }
     pthread_mutex_lock(&student_lock);
     student_finished++;
+    csmcs.queues[students->ID].student_queue = -1;
+    students->student_queue = -1;
     pthread_mutex_unlock(&student_lock);
     sem_post(&student_sem); // notify coordinator
     pthread_exit(NULL);     // student thread terminate
@@ -117,21 +122,20 @@ void *thread_function_student(void *thread_info)
 void *thread_function_tutor(void *thread_info)
 {
     struct tutor *tutors = (struct tutor *)thread_info;
-    printf("%d\n", tutors->ID);
+    int tutor_ID = tutors->ID;
     while (student_finished < student_total)
     {
-        int i = 0, highest_priority = 0, student_index = -1, total_Need = student_total * help_need_total;
+        int i = 0, highest_priority = 0, student_index = -1;
         sem_wait(&coordinator_sem);
         pthread_mutex_lock(&student_lock);
         
         for (i = 0; i < student_total; ++i)
         {
-            //printf("%d , %d \n", csmcs.students[i].priority, csmcs.students[i].arriving_order);
-            if (csmcs.students[i].arriving_order != -1 && csmcs.students[i].priority >= highest_priority && csmcs.students[i].arriving_order <= total_Need)
+            if (csmcs.students[i].arriving_order != -1 && csmcs.students[i].priority >= highest_priority)
             {
                 highest_priority = csmcs.students[i].priority;
                 student_index = i;
-                total_Need = csmcs.students[i].arriving_order;
+
             }
         }
         if (chair_unused == chair_total)
@@ -144,7 +148,7 @@ void *thread_function_tutor(void *thread_info)
         
         tutoring_on_going++;
         tutor_aviliable --;
-        csmcs.students[student_index].student_queue = tutors->ID;
+        csmcs.students[student_index].student_queue = tutor_ID;
         pthread_mutex_unlock(&student_lock);
 
         thread_sleep();
@@ -152,7 +156,8 @@ void *thread_function_tutor(void *thread_info)
         tutoring_on_going--;
         total_session++;
         sem_post(&tutor_sem);
-        printf("T: Student %d tutored by Tutor %d. Students tutored now = %d. Total sessions tutored = %d\n", csmcs.students[student_index].ID, csmcs.students[student_index-1].student_queue, (tutor_total - tutor_aviliable), total_session);
+        global_tutor_ID[student_index] = tutor_ID;
+        printf("T: Student %d tutored by Tutor %d. Students tutored now = %d. Total sessions tutored = %d\n", csmcs.students[student_index].ID, tutor_ID, (tutor_total - tutor_aviliable), total_session);
         
         pthread_mutex_unlock(&student_lock);
 
@@ -160,7 +165,7 @@ void *thread_function_tutor(void *thread_info)
         csmcs.students[student_index].student_queue = -1;
         pthread_mutex_unlock(&tutor_lock);
     }
-
+    printf("Tutor %d term\n", tutor_ID);
     pthread_exit(NULL);
 }
 void *thread_function_chair(void *arg)
@@ -171,13 +176,14 @@ void *thread_function_chair(void *arg)
         {
             break;
         }
+        int i = 0;
         sem_wait(&student_sem);
-        int i = 0; //, serving_student_num = 0, highest_priority = help_need_total, student_index = -1, fcfs = student_total * help_need_total;
+         //, serving_student_num = 0, highest_priority = help_need_total, student_index = -1, fcfs = student_total * help_need_total;
         pthread_mutex_lock(&student_lock);
         for (i = 0; i < student_total; i++)
         {
             //printf("csmcs queue %d\n",csmcs.queues[i].student_queue);
-            if (csmcs.queues[i].student_queue >0) // student seatted detected
+            if (csmcs.queues[i].student_queue >=1) // student seatted detected
             {
                 csmcs.students[i].arriving_order = csmcs.queues[i].student_queue;
                 printf("C: Student %d with priority %d added to the queue. Waiting students now = %d. Total requests = %d\n", csmcs.students[i].ID, csmcs.students[i].priority, chair_total - chair_unused, total_request);
@@ -222,6 +228,7 @@ int main(int argc, const char *argv[])
     csmcs.students = (struct student *)malloc(student_total * sizeof(struct student));
     csmcs.tutors = (struct tutor *)malloc(tutor_total * sizeof(struct tutor));
     csmcs.queues = (struct chair *)malloc(student_total * sizeof(struct chair));
+    global_tutor_ID = (int *)malloc(student_total * sizeof(int));
 
     sem_init(&student_sem, 0, 0);
     sem_init(&tutor_sem, 0, 0);
