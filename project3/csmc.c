@@ -77,8 +77,8 @@ void *thread_function_student(void *thread_info)
     int student_ID = students->ID; // student ID keep changing in struct, dont know why
     while (1)
     {
-        if(students->helped_time >= help_need_total){
-            printf("student %d term\n", students->ID  );
+        if(students->helped_time >= help_need_total)
+        {
             break;
         }
         thread_sleep();
@@ -165,7 +165,6 @@ void *thread_function_tutor(void *thread_info)
         csmcs.students[student_index].student_queue = -1;
         pthread_mutex_unlock(&tutor_lock);
     }
-    printf("Tutor %d term\n", tutor_ID);
     pthread_exit(NULL);
 }
 void *thread_function_chair(void *arg)
@@ -264,7 +263,6 @@ int main(int argc, const char *argv[])
     pthread_join(p_coordinator, NULL);
     for (i = 0; i < student_total; i++)
     {
-        //printf("input of student_total is %d ;\n", student_total);
         pthread_join(p_student[i], NULL);
     }
     for (i = 0; i < tutor_total; i++)
