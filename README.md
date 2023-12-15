@@ -39,5 +39,7 @@ Data Type, struct table, passing args, progress on Student thread
 Minor adjustment
 ### 11/14 
 Debugging, IDs adjustment
+## Project 4
+### 12/14 badfmt, badlarge(indirect), badrefcnt, badrefcnt2, badroot, badroot2
 
 
