@@ -32,12 +32,13 @@ void unsetbit(char *bitmap, uint blocknum)
   bitmap = (bitmap + blocknum / 8);
   *bitmap = (*bitmap) & (~bitarr[blocknum % 8]);
 } // gpt
+int *ref_bit;
 void check_inode_type(char *addr, struct dinode *inodes, int num_inodes);                                        //  1
 void check_inode_addr(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, int metablocks); // 2
 // void check_root_addr(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *inodebitmap);
 void check_root_path(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *inodebitmap, char *inodeblocks); // 3 4
 
-void check_bitmap_consistency_5(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *databitmap, int metablocks);                                                               // 5
+void check_bitmap_consistency_5(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *databitmap, char *databitmap_temp, int metablocks);                                        // 5
 void check_bitmap_consistency_6(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *databitmap, char *databitmap_temp, int metablocks);                                        // 6
 void check_direct_redundent_7(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *databitmap, char *databitmap_temp, int metablocks);                                          // 7
 void check_indirect_redundent_8(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *databitmap, char *databitmap_temp, int metablocks);                                        // 8
@@ -88,24 +89,23 @@ int main(int argc, char *argv[])
   databitmap = (char *)(addr + (IBLOCK((uint)0) * BLOCK_SIZE) + (sb->ninodes / IPB + 1) * BLOCK_SIZE);
   dip = (struct dinode *)(addr + IBLOCK((uint)0) * BLOCK_SIZE);
   // printf("begin addr %p, begin inode %p , offset %d \n", addr, dip, (char *)dip -addr);
-  char *databitmap_temp = calloc(bitblocks, BLOCK_SIZE);
+  char *databitmap_temp = (char *)malloc(bitblocks * BLOCK_SIZE);
   memcpy(databitmap_temp, databitmap, bitblocks * BLOCK_SIZE);
   // read root inode
   printf("Root inode  size %d links %d type %d \n", dip[ROOTINO].size, dip[ROOTINO].nlink, dip[ROOTINO].type);
-
   // get the address of root dir
   // root dir need modification, we need traversal all inode to find rood idrectory;
   de = (struct dirent *)(addr + (dip[ROOTINO].addrs[0]) * BLOCK_SIZE);
-
   // print the entries in the first block of root dir
-
+  
   n = dip[ROOTINO].size / sizeof(struct dirent);
   for (i = 0; i < n; i++, de++)
   {
     // printf(" inum %d, name %s ", de->inum, de->name);
     // printf("inode  size %d links %d type %d \n", dip[de->inum].size, dip[de->inum].nlink, dip[de->inum].type);
   }
-  int *ref_bit = (int *)malloc(sb->ninodes * sizeof(int));
+
+  ref_bit = (int *)malloc(sb->ninodes * sizeof(int));
   for (i = 0; i < sb->ninodes; i++)
   {
     ref_bit[i] = 0;
@@ -114,21 +114,21 @@ int main(int argc, char *argv[])
     else
       setbit(inodebitmap, i);
   }
-  char *inodebitmap_temp = calloc(1, (sb->ninodes / 8) + 1);
+  char *inodebitmap_temp =(char *) malloc((sb->ninodes / 8) + 1);
   memcpy(inodebitmap_temp, inodebitmap, (sb->ninodes / 8) + 1);
+
   check_inode_type(addr, dip, sb->ninodes);                 // 1
   check_inode_addr(addr, sb, dip, sb->ninodes, metablocks); // 2
   // check_root_addr(addr, sb, dip, sb->ninodes, inodebitmap);                                                                  // 3
-  check_root_path(addr, sb, dip, sb->ninodes, inodebitmap, inodeblocks);                                                      // 4
-  check_bitmap_consistency_5(addr, sb, dip, sb->ninodes, databitmap, metablocks);                                             // 5
-  check_bitmap_consistency_6(addr, sb, dip, sb->ninodes, databitmap, databitmap_temp, metablocks);                            // 6
-  check_direct_redundent_7(addr, sb, dip, sb->ninodes, databitmap, databitmap_temp, metablocks);                              // 7
-  check_indirect_redundent_8(addr, sb, dip, sb->ninodes, databitmap, databitmap_temp, metablocks);                            // 8
+  check_root_path(addr, sb, dip, sb->ninodes, inodebitmap, inodeblocks);                           // 4
+  check_bitmap_consistency_5(addr, sb, dip, sb->ninodes, databitmap, databitmap_temp, metablocks); // 5
+  check_bitmap_consistency_6(addr, sb, dip, sb->ninodes, databitmap, databitmap_temp, metablocks); // 6
+  // check_direct_redundent_7(addr, sb, dip, sb->ninodes, databitmap, databitmap_temp, metablocks);                              // 7
+  check_indirect_redundent_8(addr, sb, dip, sb->ninodes, databitmap, databitmap_temp, metablocks);                            // 8 7
   check_inode_not_exist(addr, sb, dip, sb->ninodes, databitmap, databitmap_temp, metablocks, inodebitmap_temp, inodebitmap);  // 9
   check_wrong_free_inode(addr, sb, dip, sb->ninodes, databitmap, databitmap_temp, metablocks, inodebitmap_temp, inodebitmap); // 10
   check_reference_count(addr, sb, dip, sb->ninodes, databitmap, databitmap_temp, metablocks, inodebitmap_temp, inodebitmap);  // 11
   check_dir_redundent(addr, sb, dip, sb->ninodes, databitmap, databitmap_temp, metablocks, inodebitmap_temp, inodebitmap);
-
   exit(0);
 }
 // requirement 1
@@ -264,7 +264,7 @@ void check_root_path(char *addr, struct superblock *sb, struct dinode *inodes, i
         }
         if (!par_path || !cur_path)
         {
-          fprintf(stderr, "ERROR: directory not properly formatted.2\n");
+          fprintf(stderr, "ERROR: directory not properly formatted.\n");
           exit(1);
         }
       }
@@ -297,7 +297,7 @@ void check_root_path(char *addr, struct superblock *sb, struct dinode *inodes, i
                 cur_path = true;
                 if (de->inum != i)
                 {
-                  fprintf(stderr, "ERROR: directory not properly formatted.3\n");
+                  fprintf(stderr, "ERROR: directory not properly formatted.\n");
                   exit(1);
                 }
               }
@@ -321,7 +321,7 @@ void check_root_path(char *addr, struct superblock *sb, struct dinode *inodes, i
         }
         if (!par_path || !cur_path)
         {
-          fprintf(stderr, "ERROR: directory not properly formatted.4\n");
+          fprintf(stderr, "ERROR: directory not properly formatted.\n");
           exit(1);
         }
       }
@@ -329,45 +329,8 @@ void check_root_path(char *addr, struct superblock *sb, struct dinode *inodes, i
   }
 }
 // check 5, bitmap consistancy
-void check_bitmap_consistency_5(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *databitmap, int metablocks)
-{
-  int i = 0;
-  int j = 0;
-  for (i = 0; i < sb->ninodes + 1; i++)
-  {
-    if (inodes[i].type >= 0 && inodes[i].type <= 3)
-    {
-      for (j = 0; j < NDIRECT + 1; j++)
-      {
-        if (inodes[i].addrs[j] == 0)
-        {
-          if (inodes[i].addrs[j] >= metablocks && inodes[i].addrs[j] < sb->size)
-          {
-            if (!CHECKBIT(databitmap, inodes[i].addrs[j]))
-            {
-              printf("ERROR: address used by inode but marked free in bitmap.\n");
-              exit(1);
-            }
-          }
-        }
-      }
-    }
-  }
-}
-void check_bitmap_consistency_6(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *databitmap, char *databitmap_temp, int metablocks)
-{
-  int i = 0;
-  for (i = metablocks; i < sb->size; i++)
-  {
-    if (CHECKBIT(databitmap_temp, i))
-    {
-      fprintf(stderr, "ERROR: bitmap marks block in use but it is not in use.\n");
-      exit(1);
-    }
-  }
-}
-void check_direct_redundent_7(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *databitmap, char *databitmap_temp, int metablocks)
-{
+void check_bitmap_consistency_5(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *databitmap, char *databitmap_temp, int metablocks)
+{ // 8
   int i = 0;
   int j = 0;
   int k = 0;
@@ -388,10 +351,11 @@ void check_direct_redundent_7(char *addr, struct superblock *sb, struct dinode *
               {
                 unsetbit(databitmap_temp, inodes[i].addrs[j]);
               }
-              else{
-                printf("ERROR: direct address used more than once.\n");
-                exit(1);
-              }
+            }
+            else
+            {
+              printf("ERROR: address used by inode but marked free in bitmap.\n");
+              exit(1);
             }
           }
         }
@@ -399,10 +363,18 @@ void check_direct_redundent_7(char *addr, struct superblock *sb, struct dinode *
       if (inodes[i].addrs[NDIRECT] != 0)
       {
         uint *inaddr = (uint *)(addr + (inodes[i].addrs[NDIRECT] * BLOCK_SIZE));
-        for (k = 0; k<NINDIRECT;k++,inaddr++){
-          if(*inaddr >=metablocks && *inaddr<=sb->size){
-            if(CHECKBIT(databitmap_temp, *inaddr)){
-              unsetbit(databitmap,*inaddr);
+        for (k = 0; k < NINDIRECT; k++, inaddr++)
+        {
+          if (*inaddr >= metablocks && *inaddr <= sb->size)
+          {
+            if (CHECKBIT(databitmap_temp, *inaddr))
+            {
+              unsetbit(databitmap_temp, *inaddr);
+            }
+            else
+            {
+              printf("ERROR: address used by inode but marked free in bitmap.\n");
+              exit(1);
             }
           }
         }
@@ -410,8 +382,7 @@ void check_direct_redundent_7(char *addr, struct superblock *sb, struct dinode *
     }
   }
 }
-
-void check_indirect_redundent_8(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *databitmap, char *databitmap_temp, int metablocks)
+void check_bitmap_consistency_6(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *databitmap, char *databitmap_temp, int metablocks)
 { // 8
   int i = 0;
   int j = 0;
@@ -440,33 +411,228 @@ void check_indirect_redundent_8(char *addr, struct superblock *sb, struct dinode
       if (inodes[i].addrs[NDIRECT] != 0)
       {
         uint *inaddr = (uint *)(addr + (inodes[i].addrs[NDIRECT] * BLOCK_SIZE));
-        for (k = 0; k<NINDIRECT;k++,inaddr++){
-          if(*inaddr >=metablocks && *inaddr<=sb->size){
-            if(CHECKBIT(databitmap_temp, *inaddr)){
-              unsetbit(databitmap,*inaddr);
-            }
-            else{
-              printf("ERROR: indirect address used more than once.\n");
-              exit(1);
+        for (k = 0; k < NINDIRECT; k++, inaddr++)
+        {
+          if (*inaddr >= metablocks && *inaddr <= sb->size)
+          {
+            if (CHECKBIT(databitmap_temp, *inaddr))
+            {
+              unsetbit(databitmap_temp, *inaddr);
             }
           }
         }
       }
     }
   }
+  for (i = metablocks; i < sb->size; i++)
+  {
+    if (CHECKBIT(databitmap_temp, i))
+    {
+      printf("ERROR: bitmap marks block in use but it is not in use.");
+      exit(1);
+    }
+  }
 }
+// void check_direct_redundent_7(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *databitmap, char *databitmap_temp, int metablocks)
+// {
+//   int i = 0;
+//   int j = 0;
+//   int k = 0;
+//   // uint *inaddr;
+//   for (i = 0; i < sb->ninodes; i++)
+//   {
+//     if (inodes[i].type >= 0 && inodes[i].type <= 3)
+//     {
+//       if (inodes[i].type >= 0 && inodes[i].type <= 3)
+//       {
+//         for (j = 0; j < NDIRECT + 1; j++)
+//         {
+//           if (inodes[i].addrs[j] != 0)
+//           {
+//             if (inodes[i].addrs[j] >= metablocks && inodes[i].addrs[j] < sb->size)
+//             {
+//               if (CHECKBIT(databitmap, inodes[i].addrs[j]))
+//               {
+//                 if (CHECKBIT(databitmap_temp, inodes[i].addrs[j]))
+//                 {
+//                   unsetbit(databitmap_temp, inodes[i].addrs[j]);
+//                 }
+//                 else
+//                 {
+//                   printf("ERROR: direct address used more than once.\n");
+//                   exit(1);
+//                 }
+//               }
+//             }
+//           }
+//         }
+//         if (inodes[i].addrs[NDIRECT] != 0)
+//         {
+//           uint *inaddr = (uint *)(addr + (inodes[i].addrs[NDIRECT] * BLOCK_SIZE));
+//           for (k = 0; k < NINDIRECT; k++, inaddr++)
+//           {
+//             if (*inaddr >= metablocks && *inaddr <= sb->size)
+//             {
+//               if (CHECKBIT(databitmap_temp, *inaddr))
+//               {
+//                 unsetbit(databitmap, *inaddr);
+//               }
+//             }
+//           }
+//         }
+//       }
+//     }
+//   }
+// }
+
+void check_indirect_redundent_8(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *databitmap, char *databitmap_temp, int metablocks)
+{
+  // struct dinode *inode;
+  // int i;
+  // int j;
+  // uint used_dir[sb->nblocks];
+  // uint used_indir[sb->nblocks];
+  // memset(used_dir, 0, sizeof(uint)* sb->nblocks);
+  // memset(used_indir, 0, sizeof(uint)* sb->nblocks);
+  // inode = (struct dinode*)(addr  + 2* BLOCK_SIZE);
+  // for (i = 0; sb->ninodes; i++,inode++){
+  //   if(inode->type!=0){
+  //     uint addr_dir;
+  //     for (j=0; j<NDIRECT; j++) {
+        
+  //       addr_dir=inode->addrs[j];
+  //       if(addr_dir==0){
+  //           continue;
+  //       }
+  //       used_dir[addr_dir-((sb->size/(BSIZE*8))+1+ (sb->ninodes/(IPB))+1)]++;
+  //   }
+  //   uint *indirect;
+  //   uint in_addr=inode->addrs[NDIRECT];
+    
+  //   indirect=(uint *)(addr+in_addr*BLOCK_SIZE);
+  //   for(i=0; i<NINDIRECT; i++, indirect++) {
+  //       in_addr=*(indirect);
+  //       if(in_addr==0){
+  //           continue;
+  //       }
+  //       used_indir[in_addr-((sb->size/(BSIZE*8))+1+ (sb->ninodes/(IPB))+1)]++;
+  //   }
+  //   }
+  //       for (i=0; i<sb->nblocks; i++) {
+  //       if (used_dir[i] > 1) {
+  //           fprintf(stderr,"ERROR: direct address used more than once.\n");
+  //           exit(1);
+  //       }
+  //       if (used_indir[i] > 1) {
+  //           fprintf(stderr,"ERROR: indirect address used more than once.\n");
+  //           exit(1);
+  //       }
+  //   }
+  // }
+  { // 8
+  int i = 0;
+  int j = 0;
+  int k = 0;
+  // uint *inaddr;
+  for (i = 0; i < sb->ninodes; i++)
+  {
+    if (inodes[i].type >= 0 && inodes[i].type <= 3)
+    {
+      for (j = 0; j < NDIRECT + 1; j++)
+      {
+        if (inodes[i].addrs[j] != 0)
+        {
+          if ((inodes[i].addrs[j] >= metablocks) && (inodes[i].addrs[j] < sb->size))
+          {
+            if (CHECKBIT(databitmap, inodes[i].addrs[j]))
+            {
+              if (CHECKBIT(databitmap_temp, inodes[i].addrs[j]))
+              {
+                unsetbit(databitmap_temp, inodes[i].addrs[j]);
+              }
+              else
+              {
+                printf("ERROR: direct address used more than once.\n");
+                exit(1);
+              }
+            }
+          }
+        }
+      }
+      if (inodes[i].addrs[NDIRECT] != 0)
+      {
+        uint *inaddr = (uint *)(addr + (inodes[i].addrs[NDIRECT] * BLOCK_SIZE));
+        for (k = 0; k < NINDIRECT; k++, inaddr++)
+        {
+          if (*inaddr >= metablocks && *inaddr <= sb->size && *inaddr != 0)
+          {
+            if (CHECKBIT(databitmap, *inaddr))
+            {
+              if (CHECKBIT(databitmap_temp, *inaddr))
+              {
+                unsetbit(databitmap_temp, *inaddr);
+              }
+              else
+              {
+                printf("ERROR: indirect address used more than once.\n");
+                exit(1);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}}
 
 void check_inode_not_exist(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *databitmap, char *databitmap_temp, int metablocks, char *inodebitmap_temp, char *inodebitmap) // 9
 {
   int i = 0;
+  int j = 0;
+  int k = 0;
+  // uint *inaddr; traversal
+  for (i = 0; i < sb->ninodes; i++)
+  {
+    if (inodes[i].type >= 0 && inodes[i].type <= 3)
+    {
+      for (j = 0; j < NDIRECT + 1; j++)
+      {
+        if (inodes[i].addrs[j] != 0)
+        {
+          if (inodes[i].addrs[j] >= metablocks && inodes[i].addrs[j] < sb->size)
+          {
+            if (CHECKBIT(databitmap, inodes[i].addrs[j]))
+            {
+              if (CHECKBIT(databitmap_temp, inodes[i].addrs[j]))
+              {
+                unsetbit(databitmap_temp, inodes[i].addrs[j]);
+              }
+            }
+          }
+        }
+      }
+      if (inodes[i].addrs[NDIRECT] != 0)
+      {
+        uint *inaddr = (uint *)(addr + (inodes[i].addrs[NDIRECT] * BLOCK_SIZE));
+        for (k = 0; k < NINDIRECT; k++, inaddr++)
+        {
+          if (*inaddr >= metablocks && *inaddr <= sb->size)
+          {
+            if (CHECKBIT(databitmap_temp, *inaddr))
+            {
+              unsetbit(databitmap, *inaddr);
+            }
+          }
+        }
+      }
+    }
+  }
   for (i = ROOTINO; i < sb->ninodes; i++)
   {
-    if (CHECKBIT(inodebitmap, i))
+    if (CHECKBIT(inodebitmap, i) && CHECKBIT(inodebitmap_temp, i))
     {
-      if (CHECKBIT(inodebitmap_temp, i))
-      {
-        printf("ERROR: inode marked use but not found in a directory.\n");
-      }
+      printf("ERROR: inode marked use but not found in a directory.\n");
+      exit(1);
     }
   }
 }
@@ -475,56 +641,182 @@ void check_wrong_free_inode(char *addr, struct superblock *sb, struct dinode *in
   int i = 0;
   int j = 0;
   int k = 0;
-  struct dirent *de;
+  int loop = 0;
+  // uint *inaddr;
   for (i = 0; i < sb->ninodes; i++)
   {
-    for (j = 0; j < (NDIRECT + NINDIRECT); j++)
+    // int n = inodes[i].size / sizeof(struct dirent);
+    if (inodes[i].type >= 0 && inodes[i].type <= 3)
     {
-      if (j < NDIRECT)
+      for (j = 0; j < NDIRECT + 1; j++)
       {
-        de = (struct dirent *)(addr + (inodes[i].addrs[j]) * BLOCK_SIZE);
-      }
-      else
-      {
-        de = (struct dirent *)(addr + *((uint *)(addr + inodes[i].addrs[NDIRECT] * BLOCK_SIZE)) * BLOCK_SIZE);
-      }
-      for (k = 0; k < (BLOCK_SIZE / sizeof(struct dirent)) || k < inodes[i].size / sizeof(struct dirent); k++)
-      {
-        if (de->inum != 0)
+        if (inodes[i].addrs[j] != 0)
         {
-          if (!CHECKBIT(inodebitmap, de->inum))
+          if (inodes[i].addrs[j] >= metablocks && inodes[i].addrs[j] < sb->size)
           {
-            printf("ERROR: inode referred to in directory but marked free.\n");
+            if (CHECKBIT(databitmap, inodes[i].addrs[j]))
+            {
+              if (CHECKBIT(databitmap_temp, inodes[i].addrs[j]))
+              {
+                unsetbit(databitmap_temp, inodes[i].addrs[j]);
+              }
+            }
+          }
+        }
+      }
+      if (inodes[i].addrs[NDIRECT] != 0)
+      {
+        uint *inaddr = (uint *)(addr + (inodes[i].addrs[NDIRECT] * BLOCK_SIZE));
+        for (k = 0; k < NINDIRECT; k++, inaddr++)
+        {
+          if (*inaddr >= metablocks && *inaddr <= sb->size)
+          {
+            if (CHECKBIT(databitmap_temp, *inaddr))
+            {
+              unsetbit(databitmap, *inaddr);
+            }
+          }
+        }
+      }
+    }
+    if (inodes[i].type == T_DIR)
+    {
+      int n = inodes[i].size / sizeof(struct dirent);
+      struct dirent *de;
+      // uint *inaddr = (uint *)(addr + (inodes[i].addrs[NDIRECT] * BLOCK_SIZE));
+      for (j = 0; j < NDIRECT; j++)
+      {
+        de = (struct dirent *)(addr + inodes[i].addrs[j] * BLOCK_SIZE);
+        loop = ENTRY_NUM;
+        if (n < ENTRY_NUM)
+        {
+          loop = n;
+        }
+        for (k = 0; k < loop; k++, de++)
+        {
+          if (de->inum != 0)
+          {
+            if (CHECKBIT(inodebitmap, de->inum))
+            {
+              if (inodes[de->inum].type == T_DIR)
+              {
+                if (CHECKBIT(inodebitmap_temp, de->inum))
+                {
+                  unsetbit(inodebitmap_temp, de->inum);
+                }
+              }
+              else if (inodes[de->inum].type == T_FILE && strcmp(de->name, ""))
+              {
+                ref_bit[de->inum]++;
+              }
+            }
+            unsetbit(inodebitmap_temp, de->inum);
+          }
+          else
+          {
+            printf("ERROR: ERROR: inode referred to in directory but marked free.\n");
             exit(1);
           }
         }
+        if (n <= ENTRY_NUM)
+        {
+          break;
+        }
+        n -= ENTRY_NUM;
+      }
+      for (j = NDIRECT; j < NINDIRECT; j++)
+      {
+        de = (struct dirent *)(addr + inodes[i].addrs[j] * BLOCK_SIZE);
+        loop = ENTRY_NUM;
+        n = inodes[i].size / sizeof(struct dirent);
+        if (n < ENTRY_NUM)
+        {
+          loop = n;
+        }
+        for (k = 0; k < loop; k++, de++)
+        {
+          if (de->inum != 0)
+          {
+            if (CHECKBIT(inodebitmap, de->inum))
+            {
+              if (inodes[de->inum].type == T_DIR)
+              {
+                if (CHECKBIT(inodebitmap_temp, de->inum))
+                {
+                  unsetbit(inodebitmap_temp, de->inum);
+                }
+              }
+              else if (inodes[de->inum].type == T_FILE && strcmp(de->name, ""))
+              {
+                ref_bit[de->inum]++;
+              }
+            }
+            unsetbit(inodebitmap_temp, de->inum);
+          }
+          else
+          {
+            printf("ERROR: ERROR: inode referred to in directory but marked free.\n");
+            exit(1);
+          }
+        }
+        if (n <= ENTRY_NUM)
+        {
+          break;
+        }
+        n -= ENTRY_NUM;
       }
     }
   }
 }
 void check_reference_count(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *databitmap, char *databitmap_temp, int metablocks, char *inodebitmap_temp, char *inodebitmap) // 11
 {
-  short *reference_count;
-  reference_count = (short *)malloc(sb->ninodes * sizeof(short));
+
   int i = 0;
-  // int j = 0;
+  int j = 0;
+  int k = 0;
+  // uint *inaddr; traversal
   for (i = 0; i < sb->ninodes; i++)
   {
-    reference_count[i] = 0;
-    // if(inodes[i].type == 0){
-    //   inodebitmap = (inodebitmap + i/8);
-    //   *inodebitmap = (*inodebitmap) & (~bitarr[i%8]);
-    //   }
-    // else{
-    //     inodebitmap = (inodebitmap + i/8);
-    //     *inodebitmap = (*inodebitmap) | (bitarr[i%8]);
-    // }
+    if (inodes[i].type >= 0 && inodes[i].type <= 3)
+    {
+      for (j = 0; j < NDIRECT + 1; j++)
+      {
+        if (inodes[i].addrs[j] != 0)
+        {
+          if (inodes[i].addrs[j] >= metablocks && inodes[i].addrs[j] < sb->size)
+          {
+            if (CHECKBIT(databitmap, inodes[i].addrs[j]))
+            {
+              if (CHECKBIT(databitmap_temp, inodes[i].addrs[j]))
+              {
+                unsetbit(databitmap_temp, inodes[i].addrs[j]);
+              }
+            }
+          }
+        }
+      }
+      if (inodes[i].addrs[NDIRECT] != 0)
+      {
+        uint *inaddr = (uint *)(addr + (inodes[i].addrs[NDIRECT] * BLOCK_SIZE));
+        for (k = 0; k < NINDIRECT; k++, inaddr++)
+        {
+          if (*inaddr >= metablocks && *inaddr <= sb->size)
+          {
+            if (CHECKBIT(databitmap_temp, *inaddr))
+            {
+              unsetbit(databitmap, *inaddr);
+            }
+          }
+        }
+      }
+    }
   }
   for (i = 0; i < sb->ninodes; i++)
   {
-    if (inodes[i].type == T_FILE && inodes[i].nlink != reference_count[i])
+    if (inodes[i].nlink != ref_bit[i])
     {
       printf("ERROR: bad reference count for file.\n");
+      exit(1);
     }
   }
 }
@@ -533,43 +825,123 @@ void check_dir_redundent(char *addr, struct superblock *sb, struct dinode *inode
   int i = 0;
   int j = 0;
   int k = 0;
-  struct dirent *de;
+  int loop = 0;
+  // uint *inaddr;
   for (i = 0; i < sb->ninodes; i++)
   {
-    for (j = 0; j < (NDIRECT + NINDIRECT); j++)
+    // int n = inodes[i].size / sizeof(struct dirent);
+    if (inodes[i].type >= 0 && inodes[i].type <= 3)
     {
-      if (j < NDIRECT)
+      for (j = 0; j < NDIRECT + 1; j++)
       {
-        de = (struct dirent *)(addr + (inodes[i].addrs[j]) * BLOCK_SIZE);
-      }
-      else
-      {
-        de = (struct dirent *)(addr + *((uint *)(addr + inodes[i].addrs[NDIRECT] * BLOCK_SIZE)) * BLOCK_SIZE);
-      }
-      for (k = 0; k < (BLOCK_SIZE / sizeof(struct dirent)) || k < inodes[i].size / sizeof(struct dirent); k++)
-      {
-        if (de->inum != 0)
+        if (inodes[i].addrs[j] != 0)
         {
-          if (CHECKBIT(inodebitmap, de->inum))
+          if (inodes[i].addrs[j] >= metablocks && inodes[i].addrs[j] < sb->size)
           {
-            if (strcmp(de->name, "..") != 0 && strcmp(de->name, ".") != 0)
+            if (CHECKBIT(databitmap, inodes[i].addrs[j]))
+            {
+              if (CHECKBIT(databitmap_temp, inodes[i].addrs[j]))
+              {
+                unsetbit(databitmap_temp, inodes[i].addrs[j]);
+              }
+            }
+          }
+        }
+      }
+      if (inodes[i].addrs[NDIRECT] != 0)
+      {
+        uint *inaddr = (uint *)(addr + (inodes[i].addrs[NDIRECT] * BLOCK_SIZE));
+        for (k = 0; k < NINDIRECT; k++, inaddr++)
+        {
+          if (*inaddr >= metablocks && *inaddr <= sb->size)
+          {
+            if (CHECKBIT(databitmap_temp, *inaddr))
+            {
+              unsetbit(databitmap, *inaddr);
+            }
+          }
+        }
+      }
+    }
+    if (inodes[i].type == T_DIR)
+    {
+      int n = inodes[i].size / sizeof(struct dirent);
+      struct dirent *de;
+      // uint *inaddr = (uint *)(addr + (inodes[i].addrs[NDIRECT] * BLOCK_SIZE));
+      for (j = 0; j < NDIRECT; j++)
+      {
+        de = (struct dirent *)(addr + inodes[i].addrs[j] * BLOCK_SIZE);
+        loop = ENTRY_NUM;
+        if (n < ENTRY_NUM)
+        {
+          loop = n;
+        }
+        for (k = 0; k < loop; k++, de++)
+        {
+          if (de->inum != 0)
+          {
+            if (CHECKBIT(inodebitmap, de->inum))
             {
               if (inodes[de->inum].type == T_DIR)
               {
                 if (!CHECKBIT(inodebitmap_temp, de->inum))
                 {
                   printf("ERROR: directory appears more than once in file system.\n");
+                  exit(1);
                 }
-                else
-                {
-                  inodebitmap = (inodebitmap + i / 8);
-                  *inodebitmap = (*inodebitmap) & (~bitarr[i % 8]);
-                }
+                unsetbit(inodebitmap_temp, de->inum);
+              }
+              else if (inodes[de->inum].type == T_FILE && strcmp(de->name, ""))
+              {
+                ref_bit[de->inum]++;
               }
             }
+            unsetbit(inodebitmap_temp, de->inum);
           }
         }
-        de++;
+        if (n <= ENTRY_NUM)
+        {
+          break;
+        }
+        n -= ENTRY_NUM;
+      }
+      for (j = NDIRECT; j < NINDIRECT; j++)
+      {
+        de = (struct dirent *)(addr + inodes[i].addrs[j] * BLOCK_SIZE);
+        loop = ENTRY_NUM;
+        n = inodes[i].size / sizeof(struct dirent);
+        if (n < ENTRY_NUM)
+        {
+          loop = n;
+        }
+        for (k = 0; k < loop; k++, de++)
+        {
+          if (de->inum != 0)
+          {
+            if (CHECKBIT(inodebitmap, de->inum))
+            {
+              if (inodes[de->inum].type == T_DIR)
+              {
+                if (!CHECKBIT(inodebitmap_temp, de->inum))
+                {
+                  printf("ERROR: directory appears more than once in file system.\n");
+                  exit(1);
+                }
+                unsetbit(inodebitmap_temp, de->inum);
+              }
+              else if (inodes[de->inum].type == T_FILE && strcmp(de->name, ""))
+              {
+                ref_bit[de->inum]++;
+              }
+            }
+            unsetbit(inodebitmap_temp, de->inum);
+          }
+        }
+        if (n <= ENTRY_NUM)
+        {
+          break;
+        }
+        n -= ENTRY_NUM;
       }
     }
   }
