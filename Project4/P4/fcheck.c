@@ -20,13 +20,26 @@
 char bitarr[8] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80}; // filesystem image address
 #define CHECKBIT(databitmap, blocknum) ((*(databitmap + blocknum / 8)) & (bitarr[blocknum % 8]))
 
-void check_inode_type(char *addr, struct dinode *inodes, int num_inodes);                        // for # 1
-void check_inode_addr(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes); // for # 2
+#define ENTRY_NUM (BSIZE / sizeof(struct dirent))
+void setbit(char *bitmap, uint blocknum)
+{
+  bitmap = (bitmap + blocknum / 8);
+  *bitmap = (*bitmap) | (bitarr[blocknum % 8]);
+} // gpt
+// unset the bit
+void unsetbit(char *bitmap, uint blocknum)
+{
+  bitmap = (bitmap + blocknum / 8);
+  *bitmap = (*bitmap) & (~bitarr[blocknum % 8]);
+} // gpt
+void check_inode_type(char *addr, struct dinode *inodes, int num_inodes);                                        //  1
+void check_inode_addr(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, int metablocks); // 2
 // void check_root_addr(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *inodebitmap);
-void check_root_path(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *inodebitmap);
-void check_bitmap_consistency_5(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *databitmap);
-void check_bitmap_consistency_6(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *databitmap, char *databitmap_temp, int metablocks);
-void check_direct_redundent_7(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *databitmap, char *databitmap_temp, int metablocks);
+void check_root_path(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *inodebitmap, char *inodeblocks); // 3 4
+
+void check_bitmap_consistency_5(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *databitmap, int metablocks);                                                               // 5
+void check_bitmap_consistency_6(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *databitmap, char *databitmap_temp, int metablocks);                                        // 6
+void check_direct_redundent_7(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *databitmap, char *databitmap_temp, int metablocks);                                          // 7
 void check_indirect_redundent_8(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *databitmap, char *databitmap_temp, int metablocks);                                        // 8
 void check_inode_not_exist(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *databitmap, char *databitmap_temp, int metablocks, char *inodebitmap_temp, char *inodebitmap);  // 9
 void check_wrong_free_inode(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *databitmap, char *databitmap_temp, int metablocks, char *inodebitmap_temp, char *inodebitmap); // 10
@@ -42,7 +55,7 @@ int main(int argc, char *argv[])
   struct dinode *dip;
   struct superblock *sb;
   struct dirent *de;
-
+  char *inodeblocks;
   if (argc < 2)
   {
     fprintf(stderr, "Usage: sample fs.img ...\n");
@@ -70,12 +83,13 @@ int main(int argc, char *argv[])
   /* read the inodes */
   int bitblocks = sb->size / (BLOCK_SIZE * 8) + 1;
   int metablocks = sb->ninodes / IPB + 3 + bitblocks;
+  inodeblocks = (char *)(addr + 2 * BLOCK_SIZE);
   inodebitmap = (char *)malloc((sb->ninodes / 8) + 1);
   databitmap = (char *)(addr + (IBLOCK((uint)0) * BLOCK_SIZE) + (sb->ninodes / IPB + 1) * BLOCK_SIZE);
   dip = (struct dinode *)(addr + IBLOCK((uint)0) * BLOCK_SIZE);
   // printf("begin addr %p, begin inode %p , offset %d \n", addr, dip, (char *)dip -addr);
   char *databitmap_temp = calloc(bitblocks, BLOCK_SIZE);
-  char *inodebitmap_temp = calloc(1, (sb->ninodes / 8) + 1);
+  memcpy(databitmap_temp, databitmap, bitblocks * BLOCK_SIZE);
   // read root inode
   printf("Root inode  size %d links %d type %d \n", dip[ROOTINO].size, dip[ROOTINO].nlink, dip[ROOTINO].type);
 
@@ -91,12 +105,22 @@ int main(int argc, char *argv[])
     // printf(" inum %d, name %s ", de->inum, de->name);
     // printf("inode  size %d links %d type %d \n", dip[de->inum].size, dip[de->inum].nlink, dip[de->inum].type);
   }
-
-  check_inode_type(addr, dip, sb->ninodes);                                                                                   // 1
-  check_inode_addr(addr, sb, dip, sb->ninodes);                                                                               // 2
+  int *ref_bit = (int *)malloc(sb->ninodes * sizeof(int));
+  for (i = 0; i < sb->ninodes; i++)
+  {
+    ref_bit[i] = 0;
+    if (dip[i].type == 0)
+      unsetbit(inodebitmap, i);
+    else
+      setbit(inodebitmap, i);
+  }
+  char *inodebitmap_temp = calloc(1, (sb->ninodes / 8) + 1);
+  memcpy(inodebitmap_temp, inodebitmap, (sb->ninodes / 8) + 1);
+  check_inode_type(addr, dip, sb->ninodes);                 // 1
+  check_inode_addr(addr, sb, dip, sb->ninodes, metablocks); // 2
   // check_root_addr(addr, sb, dip, sb->ninodes, inodebitmap);                                                                  // 3
-  check_root_path(addr, sb, dip, sb->ninodes, inodebitmap);                                                                   // 4
-  check_bitmap_consistency_5(addr, sb, dip, sb->ninodes, databitmap);                                                         // 5
+  check_root_path(addr, sb, dip, sb->ninodes, inodebitmap, inodeblocks);                                                      // 4
+  check_bitmap_consistency_5(addr, sb, dip, sb->ninodes, databitmap, metablocks);                                             // 5
   check_bitmap_consistency_6(addr, sb, dip, sb->ninodes, databitmap, databitmap_temp, metablocks);                            // 6
   check_direct_redundent_7(addr, sb, dip, sb->ninodes, databitmap, databitmap_temp, metablocks);                              // 7
   check_indirect_redundent_8(addr, sb, dip, sb->ninodes, databitmap, databitmap_temp, metablocks);                            // 8
@@ -104,6 +128,7 @@ int main(int argc, char *argv[])
   check_wrong_free_inode(addr, sb, dip, sb->ninodes, databitmap, databitmap_temp, metablocks, inodebitmap_temp, inodebitmap); // 10
   check_reference_count(addr, sb, dip, sb->ninodes, databitmap, databitmap_temp, metablocks, inodebitmap_temp, inodebitmap);  // 11
   check_dir_redundent(addr, sb, dip, sb->ninodes, databitmap, databitmap_temp, metablocks, inodebitmap_temp, inodebitmap);
+
   exit(0);
 }
 // requirement 1
@@ -128,128 +153,203 @@ void check_inode_type(char *addr, struct dinode *inodes, int num_inodes)
       // Additional error handling if required
     }
   }
-  printf("cannot alloc %d\n", count);
-  printf("total%d\n", total);
 }
 // check requirement 2 about inode.
-void check_inode_addr(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes)
+void check_inode_addr(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, int metablocks)
 {
   int i = 0;
   int j = 0;
   int k = 0;
   for (i = 0; i < num_inodes; i++)
   {
-    struct dinode *inode = &inodes[i];
-    for (j = 0; j < NDIRECT; j++)
+    // struct dinode *inode = &inodes[i];
+
+    for (j = 0; j < NDIRECT + 1; j++)
     {
-      // skipping good direct addr
-      if (inode->addrs[j] == 0)
+      if (inodes[i].type >= 0 && inodes[i].type <= 3)
       {
-        continue;
-      }
-      // checking direct addr
-      if (inode->addrs[j] < 0 || inode->addrs[j] >= sb->size)
-      {
-        printf("ERROR: bad direct address in inode.\n");
-        exit(1);
-      }
-    } // finished checking
-    // now the indirect addr is inode->addr[NDIRECT] (12 which represent where is the INDIRECT addr)
-    if (inode->addrs[NDIRECT] != 0)
-    {
-      if (inode->addrs[NDIRECT] < 0 || inode->addrs[NDIRECT] >= sb->size)
-      {
-        printf("ERROR: bad indirect address in inode.\n");
-        exit(1);
-      }
-    }
-    // start to check for indirect blocks
-    uint *indirect_block = (uint *)(addr + inode->addrs[NDIRECT] * BLOCK_SIZE);
-    for (k = 0; k < NINDIRECT; k++)
-    {
-      if (indirect_block[k] != 0)
-      {
-        if (indirect_block[k] < 0 || indirect_block[k] >= sb->size)
+        if ((inodes[i].addrs[j] < metablocks || inodes[i].addrs[j] >= sb->size) && inodes[i].addrs[j] != 0)
         {
-          printf("ERROR: bad indirect address in inode.\n");
-          exit(1);
+          if (j == NDIRECT)
+          {
+            printf("ERROR: bad indirect address in inode.\n");
+            exit(1);
+          }
+          else
+          {
+            printf("ERROR: bad direct address in inode.\n");
+            exit(1);
+          }
+        }
+
+        if (inodes[i].addrs[NDIRECT] != 0)
+        {
+          uint *inaddr = (uint *)(addr + (inodes[i].addrs[NDIRECT] * BLOCK_SIZE));
+          for (k = 0; k < NDIRECT; k++)
+          {
+            if (*inaddr != 0)
+            {
+              if (*inaddr < metablocks || *inaddr >= sb->size)
+              {
+                printf("ERROR: bad indirect address in inode.\n");
+                exit(1);
+              }
+            }
+            inaddr++;
+          }
         }
       }
     }
   }
 }
 // check root path .. and ., 4 and 3
-void check_root_path(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *inodebitmap)
+void check_root_path(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *inodebitmap, char *inodeblocks)
 {
   bool cur_path = false;
   bool par_path = false;
+  // int entry = BLOCK_SIZE / sizeof(struct dirent);
   int i = 0;
   int j = 0;
   int k = 0;
   struct dirent *de;
-  for (i = 0; i < sb->ninodes; i++)
+  // int loop;
+  struct dinode *inode;
+  uint inaddr;
+  inode = (struct dinode *)(inodeblocks);
+  for (i = 0; i < sb->ninodes; i++, inode++)
   {
-    uint *inaddr = (uint *)(addr + (inodes[i].addrs[NDIRECT] * BLOCK_SIZE));
-    for (j = 0; j < (NDIRECT + NINDIRECT); j++)
+    if (i == ROOTINO)
     {
-      if (j < NDIRECT)
+      if (inode->type != T_DIR)
       {
-        de = (struct dirent *)(addr + (inodes[i].addrs[j]) * BLOCK_SIZE);
+        printf("ERROR: root directory does not exist.\n");
+        exit(1);
       }
       else
       {
-        de = (struct dirent *)(addr + *((uint *)(addr + inodes[i].addrs[NDIRECT] * BLOCK_SIZE)) * BLOCK_SIZE);
-        inaddr++;
-      }
-      for (k = 0; k < (BLOCK_SIZE / sizeof(struct dirent)) || k < inodes[i].size / sizeof(struct dirent); k++)
-      {
-        if (de->inum != 0)
+        for (j = 0; j < NDIRECT; j++)
         {
-          if (CHECKBIT(inodebitmap, de->inum))
+          inaddr = inode->addrs[j];
+          if (inaddr != 0)
           {
-            if (strcmp(de->name, ".") == 0)
+            de = (struct dirent *)(addr + inaddr * BLOCK_SIZE);
+            for (k = 0; k < ENTRY_NUM; k++, de++)
             {
-              cur_path = true;
-              if (de->inum != i)
+              if (strcmp(".", de->name) == 0)
               {
-                printf("ERROR: directory not properly formatted.\n");
-                exit(1);
+                cur_path = true;
+                if (de->inum != 1)
+                {
+                  fprintf(stderr, "ERROR: directory not properly formatted.\n");
+                  exit(1);
+                }
+              }
+              else if (strcmp("..", de->name) == 0)
+              {
+                par_path = true;
+                if ((i != 1 && de->inum == i) || (i == 1 && de->inum != i))
+                {
+                  fprintf(stderr, "ERROR: root directory does not exist.\n");
+                  exit(1);
+                }
+              }
+              if (par_path && cur_path)
+              {
+                break;
               }
             }
-            else if (strcmp(de->name, "..") == 0 && i == ROOTINO && de->inum != i)
-            { 
-              if (de->inum != i)
-              {
-                printf("ERROR: root directory does not exist.\n");
-                exit(1);
-              }
-            }
-            par_path = true;
           }
+          if (par_path && cur_path)
+            break;
         }
-        de++;
+        if (!par_path || !cur_path)
+        {
+          fprintf(stderr, "ERROR: directory not properly formatted.2\n");
+          exit(1);
+        }
       }
     }
   }
-  if (cur_path == false && par_path == false)
+  cur_path = false;
+  par_path = false;
+  inode = (struct dinode *)(inodeblocks);
+  for (i = 0; i < sb->ninodes; i++, inode++)
   {
-    printf("ERROR: directory not properly formatted.\n");
-    exit(1);
+    if (i != ROOTINO && inode->type == T_DIR)
+    {
+      if (inode->type != T_DIR)
+      {
+        printf("ERROR: root directory does not exist.\n");
+        exit(1);
+      }
+      else
+      {
+        for (j = 0; j < NDIRECT; j++)
+        {
+          inaddr = inode->addrs[j];
+          if (inaddr != 0)
+          {
+            de = (struct dirent *)(addr + inaddr * BLOCK_SIZE);
+            for (k = 0; k < ENTRY_NUM; k++, de++)
+            {
+              if (strcmp(".", de->name) == 0)
+              {
+                cur_path = true;
+                if (de->inum != i)
+                {
+                  fprintf(stderr, "ERROR: directory not properly formatted.3\n");
+                  exit(1);
+                }
+              }
+              else if (strcmp("..", de->name) == 0)
+              {
+                par_path = true;
+                if ((i != 1 && de->inum == i) || (i == 1 && de->inum != i))
+                {
+                  fprintf(stderr, "ERROR: root directory does not exist.\n");
+                  exit(1);
+                }
+              }
+              if (par_path && cur_path)
+              {
+                break;
+              }
+            }
+          }
+          if (par_path && cur_path)
+            break;
+        }
+        if (!par_path || !cur_path)
+        {
+          fprintf(stderr, "ERROR: directory not properly formatted.4\n");
+          exit(1);
+        }
+      }
+    }
   }
 }
 // check 5, bitmap consistancy
-void check_bitmap_consistency_5(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *databitmap)
+void check_bitmap_consistency_5(char *addr, struct superblock *sb, struct dinode *inodes, int num_inodes, char *databitmap, int metablocks)
 {
   int i = 0;
   int j = 0;
-  for (i = 0; i < sb->ninodes; i++)
+  for (i = 0; i < sb->ninodes + 1; i++)
   {
-    for (j = 0; j < NDIRECT + 1; j++)
+    if (inodes[i].type >= 0 && inodes[i].type <= 3)
     {
-      if (!CHECKBIT(databitmap, inodes[i].addrs[j]))
+      for (j = 0; j < NDIRECT + 1; j++)
       {
-        printf("ERROR: address used by inode but marked free in bitmap.\n");
-        exit(1);
+        if (inodes[i].addrs[j] == 0)
+        {
+          if (inodes[i].addrs[j] >= metablocks && inodes[i].addrs[j] < sb->size)
+          {
+            if (!CHECKBIT(databitmap, inodes[i].addrs[j]))
+            {
+              printf("ERROR: address used by inode but marked free in bitmap.\n");
+              exit(1);
+            }
+          }
+        }
       }
     }
   }
@@ -270,14 +370,42 @@ void check_direct_redundent_7(char *addr, struct superblock *sb, struct dinode *
 {
   int i = 0;
   int j = 0;
-  for (i = 0; i < sb->ninodes + 1; i++)
+  int k = 0;
+  // uint *inaddr;
+  for (i = 0; i < sb->ninodes; i++)
   {
-    for (j = 0; j < NDIRECT + 1; j++)
+    if (inodes[i].type >= 0 && inodes[i].type <= 3)
     {
-      if (!CHECKBIT(databitmap_temp, inodes[i].addrs[j]))
+      for (j = 0; j < NDIRECT + 1; j++)
       {
-        printf("ERROR: direct address used more than once.\n");
-        exit(1);
+        if (inodes[i].addrs[j] != 0)
+        {
+          if (inodes[i].addrs[j] >= metablocks && inodes[i].addrs[j] < sb->size)
+          {
+            if (CHECKBIT(databitmap, inodes[i].addrs[j]))
+            {
+              if (CHECKBIT(databitmap_temp, inodes[i].addrs[j]))
+              {
+                unsetbit(databitmap_temp, inodes[i].addrs[j]);
+              }
+              else{
+                printf("ERROR: direct address used more than once.\n");
+                exit(1);
+              }
+            }
+          }
+        }
+      }
+      if (inodes[i].addrs[NDIRECT] != 0)
+      {
+        uint *inaddr = (uint *)(addr + (inodes[i].addrs[NDIRECT] * BLOCK_SIZE));
+        for (k = 0; k<NINDIRECT;k++,inaddr++){
+          if(*inaddr >=metablocks && *inaddr<=sb->size){
+            if(CHECKBIT(databitmap_temp, *inaddr)){
+              unsetbit(databitmap,*inaddr);
+            }
+          }
+        }
       }
     }
   }
@@ -287,14 +415,42 @@ void check_indirect_redundent_8(char *addr, struct superblock *sb, struct dinode
 { // 8
   int i = 0;
   int j = 0;
-  uint *inaddr = (uint *)(addr + (inodes[i].addrs[NDIRECT] * BLOCK_SIZE));
+  int k = 0;
+  // uint *inaddr;
   for (i = 0; i < sb->ninodes; i++)
   {
-    for (j = 0; j < NDIRECT + 1; j++)
+    if (inodes[i].type >= 0 && inodes[i].type <= 3)
     {
-      if (!CHECKBIT(databitmap_temp, *inaddr))
+      for (j = 0; j < NDIRECT + 1; j++)
       {
-        printf("ERROR: indirect address used more than once.\n");
+        if (inodes[i].addrs[j] != 0)
+        {
+          if (inodes[i].addrs[j] >= metablocks && inodes[i].addrs[j] < sb->size)
+          {
+            if (CHECKBIT(databitmap, inodes[i].addrs[j]))
+            {
+              if (CHECKBIT(databitmap_temp, inodes[i].addrs[j]))
+              {
+                unsetbit(databitmap_temp, inodes[i].addrs[j]);
+              }
+            }
+          }
+        }
+      }
+      if (inodes[i].addrs[NDIRECT] != 0)
+      {
+        uint *inaddr = (uint *)(addr + (inodes[i].addrs[NDIRECT] * BLOCK_SIZE));
+        for (k = 0; k<NINDIRECT;k++,inaddr++){
+          if(*inaddr >=metablocks && *inaddr<=sb->size){
+            if(CHECKBIT(databitmap_temp, *inaddr)){
+              unsetbit(databitmap,*inaddr);
+            }
+            else{
+              printf("ERROR: indirect address used more than once.\n");
+              exit(1);
+            }
+          }
+        }
       }
     }
   }
