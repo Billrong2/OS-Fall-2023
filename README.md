@@ -40,6 +40,11 @@ Minor adjustment
 ### 11/14 
 Debugging, IDs adjustment
 ## Project 4
-### 12/14 badfmt, badlarge(indirect), badrefcnt, badrefcnt2, badroot, badroot2
+### 12/14 
+badfmt, badlarge(indirect), badrefcnt, badrefcnt2, badroot, badroot2
+### 12/16
+final minor fixes, Project 4 final score 70/100
+
+# -------- Course Ended ---------- #
 
 
